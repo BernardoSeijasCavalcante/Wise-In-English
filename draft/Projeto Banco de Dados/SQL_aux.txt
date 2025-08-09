@@ -1,0 +1,31 @@
+create table user(
+user_id,
+username,
+email,
+password,
+registered_at,
+last_activity
+);
+
+create table words(
+word_id,
+word,
+translation,
+description,
+formality_level,
+grammatical_class,
+created_at,
+updated_at
+);
+
+create table senteces(
+sentence_id,
+word_id,
+sentence,
+grammar_score,
+vocabulary_score,
+naturalness_score,
+punctuation_score,
+registered_at,
+updated_at
+);
