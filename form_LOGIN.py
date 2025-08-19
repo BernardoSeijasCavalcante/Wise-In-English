@@ -2,14 +2,9 @@ import streamlit as st
 from streamlit_extras.let_it_rain import rain
 from streamlit_extras.colored_header import colored_header
 
-
-
 # ===== Configuração da Página =====
 st.set_page_config(page_title="Login System", page_icon="🔐", layout="centered")
 
-# ===== Estado Inicial =====
-if "page" not in st.session_state:
-    st.session_state.page = "login"
 
 # ===== Funções =====
 def go_to_signup():
@@ -36,8 +31,8 @@ def validate_signup(name, email, pwd, confirm):
         st.success("✅ Account created successfully! You can now log in.")
         go_to_login()
 
-# ===== Tela de Login =====
-if st.session_state.page == "login":
+
+def login():
     with st.container():
         colored_header("🔐 Sign In", description="Access your account", color_name="blue-70")
         with st.container():
@@ -55,8 +50,8 @@ if st.session_state.page == "login":
         st.write("Don't have an account?")
         st.button("Create an Account", on_click=go_to_signup, type="secondary", use_container_width=True)
 
-# ===== Tela de Cadastro =====
-elif st.session_state.page == "signup":
+def register():
+     # ===== Tela de Cadastro =====
     with st.container():
         colored_header("🆕 Create Account", description="Join us today", color_name="green-70")
         with st.container():
