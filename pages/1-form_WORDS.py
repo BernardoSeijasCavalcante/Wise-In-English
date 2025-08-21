@@ -1,6 +1,51 @@
 import streamlit as st
 import pandas as pd
 import random
+import pymysql
+from pydantic import BaseModel
+import datetime
+
+server = ''
+database = ''
+username = ''
+password = ''
+
+
+def get_connection():
+    return pymysql.connect(server=server, user=username, password= password , database=database)
+
+class words(BaseModel):
+    word_id:int
+    word:str
+    translation:str
+    description:str
+    formality_level:str
+    grammatical_class:str
+    created_at: datetime
+    updated_at: datetime
+
+
+async def wordTable(word: words):
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        query = "INSERT INTO WORD (word, translation, description, formality_level, grammatical_class) VALUES (%s,%s,%s,%s,%s)"
+        cursor.execute(query,(word.word,
+        word.translation,
+        word.description,
+        word.formality_level,
+        word.grammatical_class))
+
+        conn.commit()
+
+        cursor.close()
+        conn.close()
+    except Exception as e:
+        print("terminei")
+
+
+       
 
 
 with st.sidebar:
