@@ -1,75 +1,112 @@
 import streamlit as st
-from streamlit_extras.let_it_rain import rain
-from streamlit_extras.colored_header import colored_header
+import form_LOGIN as login
+import main as main
+import user_interface.main as m
+import user_interface.pages_aux.form_WORDS as words
+import user_interface.pages_aux.form_SENTENCES as sentences
 
-# ===== Configuração da Página =====
-st.set_page_config(page_title="Login System", page_icon="🔐", layout="centered")
 
+if "start" not in st.session_state:
+    st.session_state.start = "No"
 
-# ===== Estado Inicial =====
-if "page" not in st.session_state:
-    st.session_state.page = "login"
+def app():
+    st.session_state.start = "Yes"
 
-# ===== Funções =====
-def go_to_signup():
-    st.session_state.page = "signup"
+    st.set_page_config(page_title="Wise-In-English", page_icon="🧠", layout="centered")
+    if "page" not in st.session_state:
+        st.session_state.page = "init"
 
-def go_to_login():
-    st.session_state.page = "login"
+    if st.session_state.page == "init":
+        user_number = 0
+        word_number = 0
+        sentences_number = 0
 
-def validate_login(user, pwd):
-    if not user or not pwd:
-        st.error("⚠ Please fill all fields.")
-    elif user == "admin" and pwd == "123":
-        st.success("✅ Login successful!")
-        rain(emoji="🎉", font_size=54, falling_speed=5, animation_length="infinite")
-    else:
-        st.error("❌ Invalid username or password.")
+        rating = 0.0
+        functionality_rating = 0.0
+        usefulness_rating = 0.0
+        IA_rating = 0.0
 
-def validate_signup(name, email, pwd, confirm):
-    if not name or not email or not pwd or not confirm:
-        st.error("⚠ Please fill all fields.")
-    elif pwd != confirm:
-        st.error("❌ Passwords do not match.")
-    else:
-        st.success("✅ Account created successfully! You can now log in.")
-        go_to_login()
+        st.title("Bem-Vindo(a)!")
+        texto_intr = f"""
+            <div style='text-align: justify;'>
+            Este é o <div style='display:inline;color: red;'>Wise</div> In <div style='display:inline;color:blue;'>English</div>, uma plataforma dedicada a estudantes que querem aprender inglês. Se você tem dificuldades com gramática, pontuação, vocabulário ou com a naturalidade na comunicação em inglês, este é o caminho certo. O processo de aprendizado consiste na elaboração de frases e no registro de palavras com o auxílio e a avaliação por inteligência artificial. O estudante registra suas frases a partir das palavras previamente cadastradas e recebe um feedback com uma média de seu desempenho nos quatro tópicos de avaliação mencionados acima.
+            </div>
+        """
 
-# ===== Tela de Login =====
-if st.session_state.page == "login":
-    with st.container():
-        colored_header("🔐 Sign In", description="Access your account", color_name="blue-70")
-        with st.container():
-            st.markdown('<div class="login-box">', unsafe_allow_html=True)
-            username = st.text_input("👤 Username")
-            password = st.text_input("🔑 Password", type="password")
-            login_btn = st.button("Login", type="primary", use_container_width=True)
-            st.link_button("Continue with Google", "https://accounts.google.com/signin", type="secondary", use_container_width=True)
-            st.markdown("</div>", unsafe_allow_html=True)
+        st.markdown(texto_intr, unsafe_allow_html=True)
 
-            if login_btn:
-                validate_login(username, password)
+        login_button = """
+        <style>
+            div.stButton{
+                display: flex;
+                justify-content: center;
+            }
+            div.stButton > button{
+                border-radius: 15px;
+                color: white;
+                background-color: blue;
+            }
+        </style>
+        """
 
-        st.markdown("---")
-        st.write("Don't have an account?")
-        st.button("Create an Account", on_click=go_to_signup, type="secondary", use_container_width=True)
+        st.markdown(login_button, unsafe_allow_html=True)
 
-# ===== Tela de Cadastro =====
-elif st.session_state.page == "signup":
-    with st.container():
-        colored_header("🆕 Create Account", description="Join us today", color_name="green-70")
-        with st.container():
-            st.markdown('<div class="login-box">', unsafe_allow_html=True)
-            name = st.text_input("👤 Full Name")
-            email = st.text_input("📧 Email")
-            password = st.text_input("🔑 Password", type="password")
-            confirm_password = st.text_input("🔒 Confirm Password", type="password")
-            register_btn = st.button("Register", type="primary", use_container_width=True)
-            st.markdown("</div>", unsafe_allow_html=True)
+        if st.button("Entre para Continuar!"):
+            st.session_state.page="login"
+            st.rerun()
 
-            if register_btn:
-                validate_signup(name, email, password, confirm_password)
+        project_performance = f"""
+        <hr>
+            <div style='font-weight: bold;font-size: 30px;'>Desempenho do Projeto</div>
+            <div style='height: 180px;display:flex; justify-content:center;'>
+                <div style='margin: 2%;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius: 50px; background-color: red;height: 100%; width:30%;float: left;'>
+                    <div style='font-size:80px; font-weight: bold;'>{user_number}</div>
+                    <div style='font-size:30px; font-weight: bold;'>USUÁRIOS</div>
+                </div>
+                <div style='margin: 2%;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius: 50px; background-color: white;height: 100%; width:30%;color: black;float: left;'>
+                    <div style='margin-bottom:-15px;font-size:80px; font-weight: bold;'>{word_number}</div>
+                    <div style='font-size:20px; font-weight: bold;text-align:center;'>PALAVRAS REGISTRADAS</div>
+                </div>
+                <div style='margin: 2%;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius: 50px; background-color: blue;height: 100%; width:30%;float: left;'>
+                    <div style='margin-bottom:-15px;font-size:80px; font-weight: bold;'>{sentences_number}</div>
+                    <div style='width: 60%;font-size:20px; font-weight: bold;text-align:center;'>FRASES REGISTRADAS</div>
+                </div>
+            </div>
+            <br>
+            <br>
+            <div style='height: 180px;display:flex; align-items:center;justify-content:center;'>
+                <div style='border-radius:50px;background-color: #0d0e0e;width: 50%; height: 100%; display:flex;flex-direction:column; align-items:center;justify-content:center;'>
+                    <div style='font-size:50px;text-shadow: 0px 2px 10px white;'>{rating}/10.0</div>
+                    <div style='font-size:20px;'>Avaliação Geral dos Usuários</div>
+                </div>
+            </div>
+            <div style='height: 180px;display:flex; justify-content:center;'>
+                <div style='margin: 2%;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius: 50px; background-color: #0d0e0e;height: 100%; color:white; width:30%;float: left;'>
+                    <div style='font-size:50px;text-shadow: 0px 2px 10px white;'>{usefulness_rating}/10.0</div>
+                    <div style='font-size:20px;'>Avaliação da Utilidade</div>
+                </div>
+                <div style='margin: 2%;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius: 50px; background-color: #0d0e0e;height: 100%; width:30%;color: white;float: left;'>
+                    <div style='font-size:50px;text-shadow: 0px 2px 10px white;'>{functionality_rating}/10.0</div>
+                    <div style='font-size:20px;text-align:center;'>Avaliação da Funcionalidade</div>
+                </div>
+                <div style='margin: 2%;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius: 50px; background-color: #0d0e0e;height: 100%; width:30%;color:white;float: left;'>
+                    <div style='font-size:50px;text-shadow: 0px 2px 10px white;'>{IA_rating}/10.0</div>
+                    <div style='width: 60%;font-size:15px;text-align:center;'>Avaliação do Nosso Modelo de IA</div>
+                </div>
+            </div>
+            <br>
+            <hr>
+        """
+        st.markdown(project_performance, unsafe_allow_html=True)
+    elif st.session_state.page == "login":
+        login.login()
+    elif st.session_state.page == "signup":
+        login.register()
+    elif st.session_state.page == "begin":
+        m.app()
+    elif st.session_state.page == "form_WORD":
+        words.app()
+    elif st.session_state.page == "form_SENTENCES":
+        sentences.app()
 
-        st.markdown("---")
-        st.write("Already have an account?")
-        st.button("Back to Login", on_click=go_to_login, type="secondary", use_container_width=True)
+app()
