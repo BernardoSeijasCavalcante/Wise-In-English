@@ -6,19 +6,22 @@ from streamlit_extras.colored_header import colored_header
 st.set_page_config(page_title="Login System", page_icon="🔐", layout="centered")
 
 
+
 # ===== Funções =====
 def go_to_signup():
     st.session_state.page = "signup"
-
+    st.rerun()
 def go_to_login():
     st.session_state.page = "login"
+    st.rerun()
 
 def validate_login(user, pwd):
     if not user or not pwd:
         st.error("⚠ Please fill all fields.")
     elif user == "admin" and pwd == "123":
         st.success("✅ Login successful!")
-        rain(emoji="🎉", font_size=54, falling_speed=5, animation_length="infinite")
+        st.session_state.page = "begin"
+        st.rerun()
     else:
         st.error("❌ Invalid username or password.")
 
@@ -35,6 +38,7 @@ def validate_signup(name, email, pwd, confirm):
 def login():
     with st.container():
         colored_header("🔐 Sign In", description="Access your account", color_name="blue-70")
+        
         with st.container():
             st.markdown('<div class="login-box">', unsafe_allow_html=True)
             username = st.text_input("👤 Username")
@@ -49,7 +53,7 @@ def login():
         st.markdown("---")
         st.write("Don't have an account?")
         st.button("Create an Account", on_click=go_to_signup, type="secondary", use_container_width=True)
-
+    
 def register():
      # ===== Tela de Cadastro =====
     with st.container():

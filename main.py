@@ -1,5 +1,10 @@
 import streamlit as st
 import form_LOGIN as login
+import main as main
+import user_interface.main as m
+import user_interface.pages_aux.form_WORDS as words
+import user_interface.pages_aux.form_SENTENCES as sentences
+
 
 if "start" not in st.session_state:
     st.session_state.start = "No"
@@ -48,6 +53,7 @@ def app():
 
         if st.button("Entre para Continuar!"):
             st.session_state.page="login"
+            st.rerun()
 
         project_performance = f"""
         <hr>
@@ -92,8 +98,15 @@ def app():
             <hr>
         """
         st.markdown(project_performance, unsafe_allow_html=True)
-    elif st.session_state.page=="login":
+    elif st.session_state.page == "login":
         login.login()
-    elif st.session_state.page=="signup":
+    elif st.session_state.page == "signup":
         login.register()
+    elif st.session_state.page == "begin":
+        m.app()
+    elif st.session_state.page == "form_WORD":
+        words.app()
+    elif st.session_state.page == "form_SENTENCES":
+        sentences.app()
+
 app()
