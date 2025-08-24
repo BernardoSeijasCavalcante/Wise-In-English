@@ -1,97 +1,145 @@
 import streamlit as st
 import pandas as pd
-import random
 import pymysql
 from pydantic import BaseModel
-import datetime
+from datetime import datetime
 
-server = ''
-database = ''
-username = ''
-password = ''
-
+server = 'localhost'
+database = 'wordDatabase'
+username = 'root'
+password = 'eduardo2005'
 
 def get_connection():
-    return pymysql.connect(server=server, user=username, password= password , database=database)
+    return pymysql.connect(
+        host=server,
+        user=username,
+        password=password,
+        database=database,
+        port=3306,
+        charset='utf8mb4',
+        cursorclass=pymysql.cursors.DictCursor
+    )
 
-class words(BaseModel):
-    word_id:int
-    word:str
-    translation:str
-    description:str
-    formality_level:str
-    grammatical_class:str
-    created_at: datetime
-    updated_at: datetime
+class Words(BaseModel):
+    word_id: int = 0
+    word: str
+    translation: str
+    description: str = ""
+    formality_level: str = ""
+    grammatical_class: str = ""
+    user_id: int = 1
 
-
-async def wordTable(word: words):
+def insert_word(word: Words):
     try:
         conn = get_connection()
         cursor = conn.cursor()
 
-        query = "INSERT INTO WORD (word, translation, description, formality_level, grammatical_class) VALUES (%s,%s,%s,%s,%s)"
-        cursor.execute(query,(word.word,
-        word.translation,
-        word.description,
-        word.formality_level,
-        word.grammatical_class))
+        query = """
+        INSERT INTO words 
+        (user_id, word, translation, description, formality_level, grammatical_class)
+        VALUES (%s, %s, %s, %s, %s, %s)
+        """
 
+        cursor.execute(query, (
+            word.user_id,
+            word.word,
+            word.translation,
+            word.description,
+            word.formality_level,
+            word.grammatical_class
+        ))
         conn.commit()
-
         cursor.close()
         conn.close()
+        st.success("Palavra inserida com sucesso!")
     except Exception as e:
-        print("terminei")
+        st.error(f"Erro ao inserir palavra: {e}")
 
+def get_latest_words(limit=5):
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        query = """
+        SELECT word, translation FROM words
+        ORDER BY created_at DESC
+        LIMIT %s
+        """
+        cursor.execute(query, (limit,))
+        results = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        return results
+    except Exception as e:
+        st.error(f"Erro ao buscar palavras: {e}")
+        return []
 
-       
-
-
-with st.sidebar:
-    st.title('**Flashcards**')
-    st.markdown('---')
-    st.markdown("Let's consolidate what we've learned.")
-    st.markdown('---')
-
-    data = {
-        "Palavra" : ["DOES"],
-        "Significado" : ["FAZER"]
-    }
+def get_random_updated_word():
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        query = """
+        SELECT word, translation FROM words
+        WHERE updated_at IS NOT NULL
+        ORDER BY RAND()
+        LIMIT 1
+        """
+        cursor.execute(query)
+        result = cursor.fetchone()
+        cursor.close()
+        conn.close()
+        return result
+    except Exception as e:
+        st.error(f"Erro ao buscar palavra aleatória: {e}")
+        return None
 
 st.title("Registro de Palavras")
 st.markdown("---")
 
-list = ["NEUTRO", "FORMAL", "INFORMAL"]
-
 col1, col2 = st.columns(2)
 
 with col1:
-    st.text_input(label="PALAVRA",key="palavra")
-    st.text_input(label="SIGNIFICADO",key="significado")
-    st.text_input(label="COMPLEMENTO",key="complemento")
-    st.text_input(label="FORMALIDADE",key="formalidade")
-    st.text_input(label="CLASSE GRAMATICAL",key="classe_gramatical")
+    palavra = st.text_input("PALAVRA")
+    significado = st.text_input("SIGNIFICADO")
+    complemento = st.text_input("COMPLEMENTO")
+    formalidade = st.text_input("FORMALIDADE")
+    gramatical = st.text_input("CLASSE GRAMATICAL")
 
     if st.button("INSERIR PALAVRAS"):
-        st.text("inserir palavras")
-
-    
-
+        if not palavra or not significado:
+            st.error("PALAVRA e SIGNIFICADO são obrigatórios.")
+        else:
+            nova_palavra = Words(
+                word=palavra,
+                translation=significado,
+                description=complemento,
+                formality_level=formalidade,
+                grammatical_class=gramatical,
+                user_id=1
+            )
+            insert_word(nova_palavra)
 
 with col2:
-    st.markdown(f"<table style='margin:0 auto; background-color: white;' width= '100%'><tr style='background-color: black ; color: white'><td style='text-align: center;'>PALAVRAS</td><td style='text-align: center; '>SIGNIFICADOS</td></tr><tr><td style='text-align: center;'>AFFORDABLE</td><td style='text-align: center; '>ACESSÍVEL/ECONÔMICO</td></tr><tr><td style='text-align: center;'>AFTERWARD</td><td style='text-align: center; '>DEPOIS</td></tr><tr><td style='text-align: center;'>ALWAYS</td><td style='text-align: center; '>SEMPRE</td></tr><tr><td style='text-align: center;'>AMAZING</td><td style='text-align: center; '>INCRÍVEL</td></tr><tr><td style='text-align: center;'>ANYWHERE</td><td style='text-align: center; '>QUALQUER LUGAR</td></tr></table>", unsafe_allow_html=True)
-    st.text("")
-    st.text("")
-    st.text("")
-    st.text("")
+    palavras = get_latest_words()
+    if palavras:
+        df = pd.DataFrame(palavras)
+        st.dataframe(df.reset_index(drop=True))
+    else:
+        st.write("Nenhuma palavra encontrada.")
 
-    st.markdown(f"<table style='margin:0 auto; background-color: white;' width= '100%'><tr><td style='text-align: center;'>DOES</td><td style='text-align: center; '>FAZER</td></tr></table>", unsafe_allow_html=True)
+    st.markdown("---")
 
-    st.text("")
-    atualizar1, atualizar2, atualizar3 = st.columns([1, 1, 1])
+    palavra_aleatoria = get_random_updated_word()
+    if palavra_aleatoria:
+        st.write(f"<table style='margin:0 auto; background-color: white;' width= '100%'><tr><td style='text-align: center; color: black'>{palavra_aleatoria['word']}</td><td style='text-align: center; color: black'>{palavra_aleatoria['translation']}</td></tr></table>", unsafe_allow_html=True)
+    else:
+        st.write("Nenhuma palavra atualizada encontrada.")
 
-    with atualizar2:
-        if st.button("ATUALIZAR"):
-            st.text("atualizar")
+    st.markdown("")
+    st.markdown("")
+    st.markdown("")
     
+    if st.button("ATUALIZAR"):
+        try:
+            st.experimental_rerun()
+        except AttributeError:
+            st.rerun()
