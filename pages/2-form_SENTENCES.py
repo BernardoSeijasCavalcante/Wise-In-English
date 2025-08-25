@@ -1,134 +1,230 @@
-import streamlit as st
-import pandas as pd
+import pymysql
 import random
+from datetime import datetime
+
+# CONFIGURAÇÃO DO BANCO DE DADOS
+server = 'localhost'
+database = 'sentenceDatabase'
+username = 'root'
+password = 'felipe'
 
 
-# Configuração da página
+def get_connection():
+    return pymysql.connect(
+        host=server,
+        user=username,
+        password=password,
+        database=database,
+        charset='utf8mb4',
+        cursorclass=pymysql.cursors.DictCursor
+    )
 
-st.set_page_config(page_title="Gerador de Frases", layout="wide")
+# FUNÇÕES PARA PALAVRAS
+def adicionar_palavra(palavra):
+    
+    # Adiciona uma palavra na tabela 'palavras' se não existir
+    # Retorna o ID da palavra
+    
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("INSERT IGNORE INTO palavras (palavra) VALUES (%s)", (palavra,))
+        conn.commit()
+        cursor.execute("SELECT id FROM palavras WHERE palavra=%s", (palavra,))
+        palavra_id = cursor.fetchone()['id']
+    finally:
+        cursor.close()
+        conn.close()
+    return palavra_id
 
+# FUNÇÕES PARA FRASES
+def adicionar_frase(palavra, frase, traducao="", complemento="", grau_formalidade="", classe_gramatical="", avaliacao=10):
+   
+    # Adiciona uma nova frase associada a uma palavra no banco
+    
+    palavra_id = adicionar_palavra(palavra)
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("""
+            INSERT INTO frases 
+            (palavra_id, frase, traducao, complemento, grau_formalidade, classe_gramatical, avaliacao)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """, (palavra_id, frase, traducao, complemento, grau_formalidade, classe_gramatical, avaliacao))
+        conn.commit()
+    finally:
+        cursor.close()
+        conn.close()
 
-# Inicialização do session_state
+def atualizar_avaliacao(frase_id, nova_avaliacao):
+    
+    # Atualiza a avaliação de uma frase específica
+    
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("""
+            UPDATE frases 
+            SET avaliacao=%s, updated_at=%s 
+            WHERE id=%s
+        """, (nova_avaliacao, datetime.now(), frase_id))
+        conn.commit()
+    finally:
+        cursor.close()
+        conn.close()
 
-if "todas_palavras" not in st.session_state:
-    st.session_state.todas_palavras = [
-        {"Palavra": "book", "Qtd Frases": 3},
-        {"Palavra": "run", "Qtd Frases": 5},
-        {"Palavra": "happy", "Qtd Frases": 2},
-        {"Palavra": "computer", "Qtd Frases": 4},
-        {"Palavra": "play", "Qtd Frases": 6},
-        {"Palavra": "fast", "Qtd Frases": 1}
-    ]
+def buscar_frases(palavra):
+    
+    # Busca todas as frases associadas a uma palavra
+    
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT id FROM palavras WHERE palavra=%s", (palavra,))
+        result = cursor.fetchone()
+        if not result:
+            return []
+        palavra_id = result['id']
+        cursor.execute("SELECT * FROM frases WHERE palavra_id=%s ORDER BY created_at DESC", (palavra_id,))
+        frases = cursor.fetchall()
+    finally:
+        cursor.close()
+        conn.close()
+    return frases
 
-if "frases_por_palavra" not in st.session_state:
-    st.session_state.frases_por_palavra = {
-        "book": [
-            {"Frase": "I like to read books.", "Palavra": "book", "Tradução": "", "Complemento": "", "Grau de Formalidade": "", "Classe Gramatical": ""},
-            {"Frase": "This book is interesting.", "Palavra": "book", "Tradução": "", "Complemento": "", "Grau de Formalidade": "", "Classe Gramatical": ""}
-        ],
-        "run": [],
-        "happy": [],
-        "computer": [],
-        "play": [],
-        "fast": []
+def palavra_aprendida(palavra):
+    
+    # Verifica se a palavra pode ser considerada "aprendida"
+    # Critério: média de avaliações das frases > 7
+    
+    frases = buscar_frases(palavra)
+    if not frases:
+        return False
+    media = sum(f['avaliacao'] for f in frases) / len(frases)
+    return media > 7
+
+def buscar_palavras_nao_aprendidas():
+    
+    # Retorna uma lista de palavras que ainda não foram aprendidas
+    # (média de avaliação <= 7)
+    
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT * FROM palavras")
+        todas = cursor.fetchall()
+    finally:
+        cursor.close()
+        conn.close()
+
+    nao_aprendidas = []
+    for p in todas:
+        frases = buscar_frases(p['palavra'])
+        if not frases:
+            nao_aprendidas.append({"palavra": p['palavra'], "quantidade_frases": 0})
+            continue
+        media = sum(f['avaliacao'] for f in frases) / len(frases)
+        if media <= 7:
+            nao_aprendidas.append({"palavra": p['palavra'], "quantidade_frases": len(frases)})
+
+    return nao_aprendidas
+
+# FUNÇÕES DE APOIO PARA O FRONTEND
+def _map_frase_row_to_ui(row):
+    
+    # Mapeia um registro de frase do banco para um formato amigável para o frontend
+    
+    return {
+        "Frase": row.get("frase", ""),
+        "Palavra": row.get("palavra", ""),
+        "Tradução": row.get("traducao", "") or "",
+        "Complemento": row.get("complemento", "") or "",
+        "Grau de Formalidade": row.get("grau_formalidade", "") or "",
+        "Classe Gramatical": row.get("classe_gramatical", "") or "",
     }
 
-if "ultima_frase" not in st.session_state:
-    st.session_state.ultima_frase = None
+def buscar_frases_ui(palavra):
+    
+    # Busca frases formatadas para exibição no frontend
+    
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("""
+            SELECT f.*, p.palavra AS palavra
+            FROM frases f
+            JOIN palavras p ON p.id = f.palavra_id
+            WHERE p.palavra = %s
+            ORDER BY f.created_at DESC
+        """, (palavra,))
+        rows = cursor.fetchall()
+    finally:
+        cursor.close()
+        conn.close()
+    return [_map_frase_row_to_ui(r) for r in rows]
 
-if "palavras_aleatorias" not in st.session_state:
-    st.session_state.palavras_aleatorias = random.sample(st.session_state.todas_palavras, 4)
+def salvar_frase_ui(palavra, frase, traducao="", complemento="", grau_formalidade="", classe_gramatical=""):
+    
+    # Salva uma frase e retorna os dados formatados para uso no frontend
+    
+    palavra_id = adicionar_palavra(palavra)
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("""
+            INSERT INTO frases 
+            (palavra_id, frase, traducao, complemento, grau_formalidade, classe_gramatical, avaliacao)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """, (palavra_id, frase, traducao, complemento, grau_formalidade, classe_gramatical, 10))
+        conn.commit()
+        return {
+            "Frase": frase,
+            "Palavra": palavra,
+            "Tradução": traducao or "",
+            "Complemento": complemento or "",
+            "Grau de Formalidade": grau_formalidade or "",
+            "Classe Gramatical": classe_gramatical or "",
+        }
+    finally:
+        cursor.close()
+        conn.close()
 
+def palavras_aleatorias_ui(limit=4):
+    
+    # Retorna até 'limit' palavras aleatórias que ainda não foram aprendidas
+    
+    base = buscar_palavras_nao_aprendidas()
+    adaptada = [{"Palavra": x["palavra"], "Qtd Frases": x["quantidade_frases"]} for x in base]
+    if not adaptada:
+        return []
+    return random.sample(adaptada, min(limit, len(adaptada)))
 
-# Barra lateral - entrada de palavra
+def detalhes_da_palavra_ui(palavra):
+    
+    # Retorna os detalhes mais recentes de uma palavra (última frase adicionada)
+    
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("""
+            SELECT f.traducao, f.complemento, f.grau_formalidade, f.classe_gramatical
+            FROM frases f
+            JOIN palavras p ON p.id = f.palavra_id
+            WHERE p.palavra = %s
+            ORDER BY f.created_at DESC
+            LIMIT 1
+        """, (palavra,))
+        row = cursor.fetchone() or {}
+    finally:
+        cursor.close()
+        conn.close()
+    return {
+        "Tradução": (row.get("traducao") if row else "") or "",
+        "Complemento": (row.get("complemento") if row else "") or "",
+        "Grau de Formalidade": (row.get("grau_formalidade") if row else "") or "",
+        "Classe Gramatical": (row.get("classe_gramatical") if row else "") or "",
+    }
 
-with st.sidebar:
-    st.title("Wise-Englishman")
-    st.markdown("---")
-    st.subheader("Digite a palavra")
-    palavra_input = st.text_input("", key="palavra_sidebar")
-    if palavra_input:
-        st.markdown("✅ Entrada realizada com sucesso")
-
-
-# Área principal - palavras aleatórias
-
-st.subheader("Palavras Aleatórias")
-col_refresh, col_blank = st.columns([1, 5])
-with col_refresh:
-    if st.button("🔄 Sortear Novas Palavras"):
-        st.session_state.palavras_aleatorias = random.sample(st.session_state.todas_palavras, 4)
-
-df_palavras = pd.DataFrame(st.session_state.palavras_aleatorias)
-st.dataframe(df_palavras, use_container_width=True)
-
-st.markdown("---")
-
-
-# Área principal - entrada de frases
-
-frase_input = st.text_area("Digite a frase em inglês:")
-
-col_btn1, col_btn2 = st.columns(2)
-
-with col_btn1:
-    # Botão para salvar a frase
-    if st.button("💾 Salvar Frase"):
-        if palavra_input and frase_input:
-            nova_frase = {
-                "Frase": frase_input,
-                "Palavra": palavra_input,
-                "Tradução": "",
-                "Complemento": "",
-                "Grau de Formalidade": "",
-                "Classe Gramatical": ""
-            }
-            if palavra_input not in st.session_state.frases_por_palavra:
-                st.session_state.frases_por_palavra[palavra_input] = []
-            st.session_state.frases_por_palavra[palavra_input].append(nova_frase)
-            st.session_state.ultima_frase = nova_frase
-            st.success("✅ Frase salva com sucesso!")
-        else:
-            st.warning("⚠️ Preencha a palavra e a frase antes de salvar.")
-
-with col_btn2:
-    # Botão para resgatar a última frase salva
-    if st.button("📜 Resgatar Última Frase"):
-        if st.session_state.ultima_frase:
-            st.info(f"Última frase: {st.session_state.ultima_frase['Frase']}")
-        else:
-            st.warning("Nenhuma frase salva ainda.")
-
-st.markdown("---")
-
-
-# Área de detalhes da palavra
-
-if palavra_input:
-    st.subheader("Detalhes da Palavra (preenchidos pelo backend)")
-    col_d1, col_d2, col_d3, col_d4, col_d5 = st.columns(5)
-    with col_d1:
-        st.text_input("Palavra", palavra_input, disabled=True)
-    with col_d2:
-        st.text_input("Tradução", "", disabled=True)
-    with col_d3:
-        st.text_input("Complemento", "", disabled=True)
-    with col_d4:
-        st.text_input("Grau de Formalidade", "", disabled=True)
-    with col_d5:
-        st.text_input("Classe Gramatical", "", disabled=True)
-
-    st.markdown("---")
-
-
-# Exibe as frases da palavra selecionada
-
-st.subheader("Frases da Palavra Selecionada")
-if palavra_input in st.session_state.frases_por_palavra:
-    df_frases = pd.DataFrame(st.session_state.frases_por_palavra[palavra_input])
-    if not df_frases.empty:
-        st.dataframe(df_frases, use_container_width=True)
-    else:
-        st.info("Nenhuma frase para esta palavra ainda.")
-else:
-    st.info("Digite uma palavra para ver suas frases.")
+# EXECUÇÃO INICIAL
+if __name__ == "__main__":
+    print("Banco configurado!")
