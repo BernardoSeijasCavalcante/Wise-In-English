@@ -1,9 +1,9 @@
 import streamlit as st
 import pandas as pd
-from DB import Words, insert_word, get_latest_words, get_random_updated_word
+from DB import Words, Databese
 from datetime import datetime
 
-
+db = Databese()
 st.title("Registro de Palavras")
 st.markdown("---")
 
@@ -28,10 +28,10 @@ with col1:
                 grammatical_class=gramatical,
                 user_id=1
             )
-            insert_word(nova_palavra)
+            db.insert_word(nova_palavra)
 
 with col2:
-    palavras = get_latest_words()
+    palavras = db.get_latest_words()
     if palavras:
         df = pd.DataFrame(palavras)
         st.dataframe(df.reset_index(drop=True))
@@ -40,7 +40,7 @@ with col2:
 
     st.markdown("---")
 
-    palavra_aleatoria = get_random_updated_word()
+    palavra_aleatoria = db.get_random_updated_word()
     if palavra_aleatoria:
         st.write(f"<table style='margin:0 auto; background-color: white;' width= '100%'><tr><td style='text-align: center; color: black'>{palavra_aleatoria['word']}</td><td style='text-align: center; color: black'>{palavra_aleatoria['translation']}</td></tr></table>", unsafe_allow_html=True)
     else:
