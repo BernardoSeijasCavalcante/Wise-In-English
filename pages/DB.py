@@ -2,10 +2,6 @@ import pymysql
 from pydantic import BaseModel
 import streamlit as st
 
-server = 'localhost'
-database = 'wordDatabase'
-username = 'root'
-password = 'eduardo2005'
 
 
 
@@ -19,13 +15,18 @@ class Words(BaseModel):
     user_id: int = 1
 
 class Databese:
+    server = 'localhost'
+    database = 'wordDatabase'
+    username = 'root'
+    password = 'eduardo2005'
+
     @staticmethod
     def get_connection():
         return pymysql.connect(
-            host=server,
-            user=username,
-            password=password,
-            database=database,
+            host=Databese.server,
+            user=Databese.username,
+            password=Databese.password,
+            database=Databese.database,
             port=3306,
             charset='utf8mb4',
             cursorclass=pymysql.cursors.DictCursor
