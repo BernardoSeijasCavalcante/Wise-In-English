@@ -1,10 +1,14 @@
 import streamlit as st
 import pandas as pd
 import random
+from user_interface.utils.DB import Words, Database
 import user_interface.utils.sidebar_model as sm
+
+db = Database()
 
 def app():
 
+    
     st.title("Registro de Palavras")
     st.markdown("---")
 
@@ -13,26 +17,55 @@ def app():
     col1, col2 = st.columns(2)
 
     with col1:
-        st.text_input(label="PALAVRA",key="palavra")
-        st.text_input(label="SIGNIFICADO",key="significado")
-        st.text_input(label="COMPLEMENTO",key="complemento")
-        st.text_input(label="FORMALIDADE",key="formalidade")
-        st.text_input(label="CLASSE GRAMATICAL",key="classe_gramatical")
+        palavra = st.text_input(label="PALAVRA",key="palavra")
+        significado = st.text_input(label="SIGNIFICADO",key="significado")
+        complemento = st.text_input(label="COMPLEMENTO",key="complemento")
+        formalidade = st.text_input(label="FORMALIDADE",key="formalidade")
+        classe_gramatical = st.text_input(label="CLASSE GRAMATICAL",key="classe_gramatical")
 
         if st.button("INSERIR PALAVRAS"):
-            st.text("inserir palavras")
+            if not palavra or not significado:
+                st.error("PALAVRA e SIGNIFICADO são obrigatórios.")
+            else:
+                nova_palavra = Words(
+                    word=palavra,
+                    translation=significado,
+                    description=complemento,
+                    formality_level=formalidade,
+                    grammatical_class=classe_gramatical,
+                    user_id=1
+                )
 
-    
+                db.insert_word(nova_palavra)
 
+                st.success("Palavra registrada com sucesso!")
+            
 
     with col2:
-        st.markdown(f"<table style='margin:0 auto; background-color: white;' width= '100%'><tr style='background-color: black ; color: white'><td style='text-align: center;'>PALAVRAS</td><td style='text-align: center; '>SIGNIFICADOS</td></tr><tr><td style='text-align: center;'>AFFORDABLE</td><td style='text-align: center; '>ACESSÍVEL/ECONÔMICO</td></tr><tr><td style='text-align: center;'>AFTERWARD</td><td style='text-align: center; '>DEPOIS</td></tr><tr><td style='text-align: center;'>ALWAYS</td><td style='text-align: center; '>SEMPRE</td></tr><tr><td style='text-align: center;'>AMAZING</td><td style='text-align: center; '>INCRÍVEL</td></tr><tr><td style='text-align: center;'>ANYWHERE</td><td style='text-align: center; '>QUALQUER LUGAR</td></tr></table>", unsafe_allow_html=True)
+        matriz = [[0 for j in range(2)] for i in range(5)]
+        results = db.get_random_word()
+
+        guia = 0
+        for row in results:
+            matriz[guia][0] = row[0]
+            matriz[guia][1] = row[1]
+            guia += 1
+
+        st.markdown(f"<table style='margin:0 auto; background-color: white;' width= '100%'><tr style='background-color: black ; color: white'><td style='text-align: center;'>PALAVRAS</td><td style='text-align: center; '>SIGNIFICADOS</td></tr><tr><td style='text-align: center;'>{matriz[0][0]}</td><td style='text-align: center; '>{matriz[0][1]}</td></tr><tr><td style='text-align: center;'>{matriz[1][0]}</td><td style='text-align: center; '>{matriz[1][1]}</td></tr><tr><td style='text-align: center;'>{matriz[2][0]}</td><td style='text-align: center; '>{matriz[2][1]}</td></tr><tr><td style='text-align: center;'>{matriz[3][0]}</td><td style='text-align: center; '>{matriz[3][1]}</td></tr><tr><td style='text-align: center;'>{matriz[4][0]}</td><td style='text-align: center; '>{matriz[4][1]}</td></tr></table>", unsafe_allow_html=True)
         st.text("")
         st.text("")
         st.text("")
         st.text("")
 
-        st.markdown(f"<table style='margin:0 auto; background-color: white;' width= '100%'><tr><td style='text-align: center;'>DOES</td><td style='text-align: center; '>FAZER</td></tr></table>", unsafe_allow_html=True)
+        results = db.get_random_word()
+
+        guia = 0
+        for row in results:
+            matriz[guia][0] = row[0]
+            matriz[guia][1] = row[1]
+            guia += 1
+
+        st.markdown(f"<table style='margin:0 auto; background-color: white;' width= '100%'><tr><td style='text-align: center;'>{matriz[0][0]}</td><td style='text-align: center; '>{matriz[0][1]}</td></tr></table>", unsafe_allow_html=True)
 
         st.text("")
         atualizar1, atualizar2, atualizar3 = st.columns([1, 1, 1])

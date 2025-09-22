@@ -1,4 +1,5 @@
 import streamlit as st
+
 import form_LOGIN as login
 import main as main
 import user_interface.main as m
@@ -10,6 +11,7 @@ if "start" not in st.session_state:
     st.session_state.start = "No"
 
 def app():
+
     st.session_state.start = "Yes"
 
     st.set_page_config(page_title="Wise-In-English", page_icon="🧠", layout="centered")
@@ -110,3 +112,4 @@ def app():
         sentences.app()
 
 app()
+
