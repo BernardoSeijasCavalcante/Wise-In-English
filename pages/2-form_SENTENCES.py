@@ -1,4 +1,5 @@
 import pymysql
+import random
 from pydantic import BaseModel
 from datetime import datetime
 
@@ -50,7 +51,7 @@ def adicionar_palavra(word):
     return word_id
 
 # FUNÇÕES PARA FRASES
-def adicionar_frase(word, frase, translation="", description="", formality_level="", grammatical_class="", avaliacao=10):
+def adicionar_frase(word, frase, translation="", description="", formality_level="", grammatical_class="", avaliacao1=10, avaliacao2=10, avaliacao3=10, avaliacao4=10):
    
     # Adiciona uma nova frase associada a uma palavra no banco
     
@@ -60,9 +61,9 @@ def adicionar_frase(word, frase, translation="", description="", formality_level
     try:
         cursor.execute("""
             INSERT INTO frases 
-            (word_id, frase, translation, description, formality_level, grammatical_class, avaliacao)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
-        """, (word_id, frase, translation, description, formality_level, grammatical_class, avaliacao))
+            (word_id, frase, translation, description, formality_level, grammatical_class, avaliacao1,avaliacao2, avaliacao3, avaliacao4, updated_at)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """, (word_id, frase, translation, description, formality_level, grammatical_class, avaliacao1, avaliacao2, avaliacao3, avaliacao4, datetime.now()))
         conn.commit()
     finally:
         cursor.close()
@@ -77,7 +78,7 @@ def atualizar_avaliacao(frase_id, nova_avaliacao):
     try:
         cursor.execute("""
             UPDATE frases 
-            SET avaliacao=%s, updated_at=%s 
+            SET avaliacao1=%s, avaliacao2=%s , avaliacao3=%s, avaliacao4=%s, ed_at=%s 
             WHERE id=%s
         """, (nova_avaliacao, datetime.now(), frase_id))
         conn.commit()
@@ -112,7 +113,7 @@ def palavra_aprendida(word):
     frases = buscar_frases(word)
     if not frases:
         return False
-    media = sum(f['avaliacao'] for f in frases) / len(frases)
+    media = sum(f['avaliacao1, avaliacao2, avaliacao3, avaliacao4'] for f in frases) / len(frases)
     return media > 7
 
 def buscar_palavras_nao_aprendidas():
@@ -135,7 +136,7 @@ def buscar_palavras_nao_aprendidas():
         if not frases:
             nao_aprendidas.append({"word": p['word'], "quantidade_frases": 0})
             continue
-        media = sum(f['avaliacao'] for f in frases) / len(frases)
+        media = sum(f['avaliacao1, avaliacao2, avaliacao3, avaliacao4'] for f in frases) / len(frases)
         if media <= 7:
             nao_aprendidas.append({"word": p['word'], "quantidade_frases": len(frases)})
 
@@ -185,9 +186,9 @@ def salvar_frase_ui(word, frase, translation="", description="", formality_level
     try:
         cursor.execute("""
             INSERT INTO frases 
-            (word_id, frase, translation, description, formality_level, grammatical_class, avaliacao)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
-        """, (word_id, frase, translation, description, formality_level, grammatical_class, 10))
+            (word_id, frase, translation, description, formality_level, grammatical_class, avaliacao1, avaliacao2, avaliacao3, avaliacao4)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """, (word_id, frase, translation, description, formality_level, grammatical_class, 10, 10, 10, 10))
         conn.commit()
         return {
             "Frase": frase,
