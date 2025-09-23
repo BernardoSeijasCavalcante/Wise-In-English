@@ -10,31 +10,21 @@ def app():
     st.set_page_config(page_title="Gerador de Frases", layout="wide")
 
     total_word = db.buscar_palavras_nao_aprendidas()
+    buscar_sentences = db.buscar_frases()
 
 
     if "todas_palavras" not in st.session_state:
-        st.session_state.todas_palavras = [
-            {"Palavra": total_word[0][0], "Qtd Frases": total_word[0][1]},
-            {"Palavra": "run", "Qtd Frases": 5},
-            {"Palavra": "happy", "Qtd Frases": 2},
-            {"Palavra": "computer", "Qtd Frases": 4},
-        
-            {"Palavra": "play", "Qtd Frases": 6},
-            {"Palavra": "fast", "Qtd Frases": 1}
-        ]
+        st.session_state.todas_palavras = []
+
+        for f in total_word:
+            st.session_state.todas_palavras.append({"Palavra": f[0], "Qtd Frases": f[1]})
 
     if "frases_por_palavra" not in st.session_state:
-        st.session_state.frases_por_palavra = {
-            "book": [
-                {"Frase": "I like to read books.", "Palavra": "book", "Tradução": "", "Complemento": "", "Grau de Formalidade": "", "Classe Gramatical": ""},
-                {"Frase": "This book is interesting.", "Palavra": "book", "Tradução": "", "Complemento": "", "Grau de Formalidade": "", "Classe Gramatical": ""}
-            ],
-            "run": [],
-            "happy": [],
-            "computer": [],
-            "play": [],
-            "fast": []
-        }
+        st.session_state.frases_por_palavra = []
+
+        for f in buscar_sentences:
+            st.session_state.frases_por_palavra.append({"Frase": f[0]})
+
 
     if "ultima_frase" not in st.session_state:
         st.session_state.ultima_frase = None
@@ -49,7 +39,7 @@ def app():
         sm.sidebar_load(st)
         
         st.subheader("Digite a palavra")
-        palavra_input = st.text_input("", key="palavra_sidebar")
+        palavra_input = st.text_input("palavra", key="palavra_sidebar")
         if palavra_input:
             st.markdown("✅ Entrada realizada com sucesso")
 

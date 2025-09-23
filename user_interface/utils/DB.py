@@ -140,7 +140,7 @@ class Database:
             if not result:
                 return []
             word_id = result['word_id']
-            cursor.execute("SELECT * FROM sentences WHERE word_id=%s ORDER BY created_at DESC", (word_id))
+            cursor.execute("SELECT sentence FROM sentences WHERE word_id=%s ORDER BY created_at DESC", (word_id))
             frases = cursor.fetchall()
         except Exception as e:
             print(f"error: {e}")
