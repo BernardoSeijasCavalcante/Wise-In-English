@@ -2,19 +2,23 @@ import streamlit as st
 import pandas as pd
 import random
 import user_interface.utils.sidebar_model as sm
+from user_interface.utils.DB import Words, Database
+
+db = Database()
 
 def app():
-    # Configuração da página
     st.set_page_config(page_title="Gerador de Frases", layout="wide")
 
-    # Inicialização do session_state
+    total_word = db.buscar_palavras_nao_aprendidas()
+
 
     if "todas_palavras" not in st.session_state:
         st.session_state.todas_palavras = [
-            {"Palavra": "book", "Qtd Frases": 3},
+            {"Palavra": total_word[0][0], "Qtd Frases": total_word[0][1]},
             {"Palavra": "run", "Qtd Frases": 5},
             {"Palavra": "happy", "Qtd Frases": 2},
             {"Palavra": "computer", "Qtd Frases": 4},
+        
             {"Palavra": "play", "Qtd Frases": 6},
             {"Palavra": "fast", "Qtd Frases": 1}
         ]

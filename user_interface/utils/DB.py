@@ -1,6 +1,9 @@
 from pydantic import BaseModel
 import pymssql
 from datetime import datetime
+import random
+from datetime import datetime
+
 
 class Words(BaseModel):
     word_id: int = 0
@@ -11,6 +14,17 @@ class Words(BaseModel):
     grammatical_class: str = ""
     updated_at: datetime = datetime.now()
     user_id: int = 1
+
+class Sentences(BaseModel):
+    sentence_id: int = 0
+    word_id: int
+    sentence: str
+    grammar_score: float
+    vocabulary_score: float
+    naturalness_score: float
+    punctuation_score: float
+    registered_at: datetime = None
+    updated_at: datetime = None
 
 class Database:
     server = 'restdb.database.windows.net'
@@ -86,208 +100,108 @@ class Database:
         except Exception as e:
             print(e)
     
-    # FUNÇÕES PARA PALAVRAS
-    def adicionar_palavra(palavra):
-        
-        # Adiciona uma palavra na tabela 'palavras' se não existir
-        # Retorna o ID da palavra
-        
-        conn = get_connection()
-        cursor = conn.cursor()
+
+
+    @staticmethod
+    def adicionar_frase(sentences:Sentences):
         try:
-            cursor.execute("INSERT IGNORE INTO palavras (palavra) VALUES (%s)", (palavra,))
+            conn = Database.get_connection()
+            cursor = conn.cursor()
+            query = """
+            INSERT INTO sentences 
+            (word_id, sentence, grammar_score, vocabulary_score, naturalness_score, punctuation_score, updated_at)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            """
+
+            cursor.execute(query,(
+                sentences.word_id,
+                sentences.sentence,
+                sentences.grammar_score,
+                sentences.vocabulary_score,
+                sentences.naturalness_score,
+                sentences.punctuation_score,
+                datetime.now()
+            ))
             conn.commit()
-            cursor.execute("SELECT id FROM palavras WHERE palavra=%s", (palavra,))
-            palavra_id = cursor.fetchone()['id']
-        finally:
             cursor.close()
             conn.close()
-        return palavra_id
+        except Exception as e:
+            st.error(f"Erro ao inserir palavra: {e}")
 
-    # FUNÇÕES PARA FRASES
-    def adicionar_frase(palavra, frase, traducao="", complemento="", grau_formalidade="", classe_gramatical="", avaliacao=10):
+    @staticmethod
+    def buscar_frases(word):
     
-        # Adiciona uma nova frase associada a uma palavra no banco
-        
-        palavra_id = adicionar_palavra(palavra)
-        conn = get_connection()
-        cursor = conn.cursor()
-        try:
-            cursor.execute("""
-                INSERT INTO frases 
-                (palavra_id, frase, traducao, complemento, grau_formalidade, classe_gramatical, avaliacao)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
-            """, (palavra_id, frase, traducao, complemento, grau_formalidade, classe_gramatical, avaliacao))
-            conn.commit()
-        finally:
-            cursor.close()
-            conn.close()
-
-    def atualizar_avaliacao(frase_id, nova_avaliacao):
-        
-        # Atualiza a avaliação de uma frase específica
-        
-        conn = get_connection()
-        cursor = conn.cursor()
-        try:
-            cursor.execute("""
-                UPDATE frases 
-                SET avaliacao=%s, updated_at=%s 
-                WHERE id=%s
-            """, (nova_avaliacao, datetime.now(), frase_id))
-            conn.commit()
-        finally:
-            cursor.close()
-            conn.close()
-
-    def buscar_frases(palavra):
-        
         # Busca todas as frases associadas a uma palavra
-        
-        conn = get_connection()
-        cursor = conn.cursor()
         try:
-            cursor.execute("SELECT id FROM palavras WHERE palavra=%s", (palavra,))
+            conn = Database.get_connection()
+            cursor = conn.cursor()
+            cursor.execute("SELECT TOP 1 words.word_id FROM words WHERE word=%s", (word))
             result = cursor.fetchone()
             if not result:
                 return []
-            palavra_id = result['id']
-            cursor.execute("SELECT * FROM frases WHERE palavra_id=%s ORDER BY created_at DESC", (palavra_id,))
+            word_id = result['word_id']
+            cursor.execute("SELECT * FROM sentences WHERE word_id=%s ORDER BY created_at DESC", (word_id))
             frases = cursor.fetchall()
+        except Exception as e:
+            print(f"error: {e}")
+            return []
         finally:
             cursor.close()
             conn.close()
-        return frases
 
-    def palavra_aprendida(palavra):
-        
-        # Verifica se a palavra pode ser considerada "aprendida"
-        # Critério: média de avaliações das frases > 7
-        
-        frases = buscar_frases(palavra)
-        if not frases:
-            return False
-        media = sum(f['avaliacao'] for f in frases) / len(frases)
-        return media > 7
-
+    @staticmethod
     def buscar_palavras_nao_aprendidas():
-        
-        # Retorna uma lista de palavras que ainda não foram aprendidas
-        # (média de avaliação <= 7)
-        
-        conn = get_connection()
+        conn = Database.get_connection()
         cursor = conn.cursor()
         try:
-            cursor.execute("SELECT * FROM palavras")
+            cursor.execute("SELECT word FROM words")
             todas = cursor.fetchall()
+        except Exception as e:
+            print(f"error: {e}")
+            return[]
         finally:
             cursor.close()
             conn.close()
 
         nao_aprendidas = []
         for p in todas:
-            frases = buscar_frases(p['palavra'])
+            frases = Database.buscar_frases(p['word'])
             if not frases:
-                nao_aprendidas.append({"palavra": p['palavra'], "quantidade_frases": 0})
+                nao_aprendidas.append({"word": p['word'], "quantidade_frases": 0})
                 continue
-            media = sum(f['avaliacao'] for f in frases) / len(frases)
+            media = sum(
+                (f['grammar_score'] + f['vocabulary_score'] + f['naturalness_score'] + f['punctuation_score']) / 4
+                for f in frases
+                ) / len(frases)
+
             if media <= 7:
-                nao_aprendidas.append({"palavra": p['palavra'], "quantidade_frases": len(frases)})
+                nao_aprendidas.append({"word": p['word'], "quantidade_frases": len(frases)})
 
         return nao_aprendidas
 
-    # FUNÇÕES DE APOIO PARA O FRONTEND
-    def _map_frase_row_to_ui(row):
-        
-        # Mapeia um registro de frase do banco para um formato amigável para o frontend
-        
-        return {
-            "Frase": row.get("frase", ""),
-            "Palavra": row.get("palavra", ""),
-            "Tradução": row.get("traducao", "") or "",
-            "Complemento": row.get("complemento", "") or "",
-            "Grau de Formalidade": row.get("grau_formalidade", "") or "",
-            "Classe Gramatical": row.get("classe_gramatical", "") or "",
-        }
+    @staticmethod
+    def detalhes_da_palavra(word):
 
-    def buscar_frases_ui(palavra):
-        
-        # Busca frases formatadas para exibição no frontend
-        
-        conn = get_connection()
+        conn = Database.get_connection()
         cursor = conn.cursor()
         try:
             cursor.execute("""
-                SELECT f.*, p.palavra AS palavra
-                FROM frases f
-                JOIN palavras p ON p.id = f.palavra_id
-                WHERE p.palavra = %s
-                ORDER BY f.created_at DESC
-            """, (palavra,))
-            rows = cursor.fetchall()
-        finally:
-            cursor.close()
-            conn.close()
-        return [_map_frase_row_to_ui(r) for r in rows]
-
-    def salvar_frase_ui(palavra, frase, traducao="", complemento="", grau_formalidade="", classe_gramatical=""):
-        
-        # Salva uma frase e retorna os dados formatados para uso no frontend
-        
-        palavra_id = adicionar_palavra(palavra)
-        conn = get_connection()
-        cursor = conn.cursor()
-        try:
-            cursor.execute("""
-                INSERT INTO frases 
-                (palavra_id, frase, traducao, complemento, grau_formalidade, classe_gramatical, avaliacao)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
-            """, (palavra_id, frase, traducao, complemento, grau_formalidade, classe_gramatical, 10))
-            conn.commit()
-            return {
-                "Frase": frase,
-                "Palavra": palavra,
-                "Tradução": traducao or "",
-                "Complemento": complemento or "",
-                "Grau de Formalidade": grau_formalidade or "",
-                "Classe Gramatical": classe_gramatical or "",
-            }
-        finally:
-            cursor.close()
-            conn.close()
-
-    def palavras_aleatorias_ui(limit=4):
-        
-        # Retorna até 'limit' palavras aleatórias que ainda não foram aprendidas
-        
-        base = buscar_palavras_nao_aprendidas()
-        adaptada = [{"Palavra": x["palavra"], "Qtd Frases": x["quantidade_frases"]} for x in base]
-        if not adaptada:
-            return []
-        return random.sample(adaptada, min(limit, len(adaptada)))
-
-    def detalhes_da_palavra_ui(palavra):
-        
-        # Retorna os detalhes mais recentes de uma palavra (última frase adicionada)
-        
-        conn = get_connection()
-        cursor = conn.cursor()
-        try:
-            cursor.execute("""
-                SELECT f.traducao, f.complemento, f.grau_formalidade, f.classe_gramatical
-                FROM frases f
-                JOIN palavras p ON p.id = f.palavra_id
-                WHERE p.palavra = %s
-                ORDER BY f.created_at DESC
-                LIMIT 1
-            """, (palavra,))
+                SELECT translation, description, formality_level, grammatical_class
+                TOP 1
+                FROM words
+                WHERE words.word = %s
+                ORDER BY created_at DESC
+                """, (word.word))
             row = cursor.fetchone() or {}
+            return row
+        except Exception as e:
+            print(f"error: {e}")
+            return []
         finally:
             cursor.close()
             conn.close()
-        return {
-            "Tradução": (row.get("traducao") if row else "") or "",
-            "Complemento": (row.get("complemento") if row else "") or "",
-            "Grau de Formalidade": (row.get("grau_formalidade") if row else "") or "",
-            "Classe Gramatical": (row.get("classe_gramatical") if row else "") or "",
-        }
+
+
+# EXECUÇÃO INICIAL
+    if __name__ == "__main__":
+        print("Banco configurado!")

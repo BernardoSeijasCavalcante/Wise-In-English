@@ -4,10 +4,9 @@ import random
 from user_interface.utils.DB import Words, Database
 import user_interface.utils.sidebar_model as sm
 
-db = Database()
-
 def app():
 
+    db = Database()
     
     st.title("Registro de Palavras")
     st.markdown("---")
