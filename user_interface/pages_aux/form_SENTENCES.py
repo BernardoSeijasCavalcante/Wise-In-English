@@ -10,17 +10,15 @@ def app():
     st.set_page_config(page_title="Gerador de Frases", layout="wide")
 
     total_word = db.buscar_palavras_nao_aprendidas()
-    buscar_sentences = db.buscar_frases()
-
 
     if "todas_palavras" not in st.session_state:
-        st.session_state.todas_palavras = []
+        st.session_state.todas_palavras = {}
 
         for f in total_word:
             st.session_state.todas_palavras.append({"Palavra": f[0], "Qtd Frases": f[1]})
 
     if "frases_por_palavra" not in st.session_state:
-        st.session_state.frases_por_palavra = []
+        st.session_state.frases_por_palavra = {}
 
         for f in buscar_sentences:
             st.session_state.frases_por_palavra.append({"Frase": f[0]})
@@ -42,6 +40,10 @@ def app():
         palavra_input = st.text_input("palavra", key="palavra_sidebar")
         if palavra_input:
             st.markdown("✅ Entrada realizada com sucesso")
+            if palavra_input not in st.session_state.frases_por_palavra:
+                buscar_sentences = db.buscar_frases(palavra_input)
+                st.session_state.frases_por_palavra[palavra_input] = [{"Frase": f[0]} for f in buscar_sentences]
+
 
 
     # Área principal - palavras aleatórias
@@ -70,11 +72,6 @@ def app():
             if palavra_input and frase_input:
                 nova_frase = {
                     "Frase": frase_input,
-                    "Palavra": palavra_input,
-                    "Tradução": "",
-                    "Complemento": "",
-                    "Grau de Formalidade": "",
-                    "Classe Gramatical": ""
                 }
                 if palavra_input not in st.session_state.frases_por_palavra:
                     st.session_state.frases_por_palavra[palavra_input] = []
@@ -99,18 +96,25 @@ def app():
 
     if palavra_input:
         st.subheader("Detalhes da Palavra (preenchidos pelo backend)")
+
+        detalhes = db.detalhes_da_palavra(palavra_input)
+
+        traducao = detalhes[0] if detalhes else ""
+        descricao = detalhes[1] if detalhes else ""
+        formalidade = detalhes[2] if detalhes else ""
+        classe = detalhes[3] if detalhes else ""
+
         col_d1, col_d2, col_d3, col_d4, col_d5 = st.columns(5)
         with col_d1:
             st.text_input("Palavra", palavra_input, disabled=True)
         with col_d2:
-            st.text_input("Tradução", "", disabled=True)
+            st.text_input("Tradução", traducao, disabled=True)
         with col_d3:
-            st.text_input("Complemento", "", disabled=True)
+            st.text_input("Complemento", descricao, disabled=True)
         with col_d4:
-            st.text_input("Grau de Formalidade", "", disabled=True)
+            st.text_input("Grau de Formalidade", formalidade, disabled=True)
         with col_d5:
-            st.text_input("Classe Gramatical", "", disabled=True)
-
+            st.text_input("Classe Gramatical", classe, disabled=True)
         st.markdown("---")
 
 
