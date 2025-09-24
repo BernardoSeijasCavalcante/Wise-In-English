@@ -4,9 +4,14 @@ import random
 import user_interface.utils.sidebar_model as sm
 from user_interface.utils.DB import Words, Database
 
-db = Database()
+
 
 def app():
+
+
+    db = Database()
+
+    
     st.set_page_config(page_title="Gerador de Frases", layout="wide")
 
     total_word = db.buscar_palavras_nao_aprendidas()

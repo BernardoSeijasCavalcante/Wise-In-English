@@ -1,8 +1,8 @@
 from pydantic import BaseModel
 import pymssql
 from datetime import datetime
+import streamlit as st
 import random
-from datetime import datetime
 
 
 class Words(BaseModel):
@@ -26,7 +26,7 @@ class Sentences(BaseModel):
     registered_at: datetime = None
     updated_at: datetime = None
 
-class Database:
+class Database():
     server = 'restdb.database.windows.net'
     database = 'Wise-Englishman-Database'
     username = 'boss'
@@ -34,7 +34,7 @@ class Database:
 
 
     def get_connection():
-        return pymssql.connect(server=Database.server, user=Database.username, password=Database.password, database=Database.database)
+        return pymssql.connect(server=Database.server, user=Database.username, password=Database.password, database=Database.database, port = 1433)
 
     @staticmethod
     def insert_word(word: Words):
@@ -84,21 +84,30 @@ class Database:
 
     @staticmethod
     def get_random_word():
+        print("Legal")
+        
         try:
+            print("Branco")
             conn = Database.get_connection()
+            print("Guilherme")
             cursor = conn.cursor()
+            print("Hugo")
             query = """
             SELECT TOP 5 word, translation FROM words
             ORDER BY NEWID()
             """
-
+            print("Azul")
             cursor.execute(query)
+            print("Preto")
             result = cursor.fetchall()
+            print("Amarelo")
             cursor.close()
+            print("Verde")
             conn.close()
+            print ("Lsaranja")
             return result
         except Exception as e:
-            print(e)
+            st.write(e)
     
 
 

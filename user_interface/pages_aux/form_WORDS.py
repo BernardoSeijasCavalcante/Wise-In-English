@@ -11,6 +11,7 @@ def app():
     st.title("Registro de Palavras")
     st.markdown("---")
 
+
     list = ["NEUTRO", "FORMAL", "INFORMAL"]
 
     col1, col2 = st.columns(2)
@@ -45,6 +46,7 @@ def app():
         results = db.get_random_word()
 
         guia = 0
+
         for row in results:
             matriz[guia][0] = row[0]
             matriz[guia][1] = row[1]
