@@ -17,25 +17,23 @@ def app():
     total_word = db.buscar_palavras_nao_aprendidas()
 
     if "todas_palavras" not in st.session_state:
-        st.session_state.todas_palavras = {}
+        st.session_state.todas_palavras = []
 
         for f in total_word:
-            st.session_state.todas_palavras.append({"Palavra": f[0], "Qtd Frases": f[1]})
+            st.session_state.todas_palavras.append({"Palavra": f["word"], "Qtd Frases": f["quantidade_frases"]})
 
     if "frases_por_palavra" not in st.session_state:
         st.session_state.frases_por_palavra = {}
 
-        for f in buscar_sentences:
-            st.session_state.frases_por_palavra.append({"Frase": f[0]})
-
-
     if "ultima_frase" not in st.session_state:
         st.session_state.ultima_frase = None
 
+   
     if "palavras_aleatorias" not in st.session_state:
-        st.session_state.palavras_aleatorias = random.sample(st.session_state.todas_palavras, 4)
-
-
+        if len(st.session_state.todas_palavras) >= 4:
+            st.session_state.palavras_aleatorias = random.sample(st.session_state.todas_palavras, 4)
+        else:
+            st.session_state.palavras_aleatorias = st.session_state.todas_palavras
     # Barra lateral - entrada de palavra
 
     with st.sidebar:
@@ -57,8 +55,11 @@ def app():
     col_refresh, col_blank = st.columns([1, 5])
     with col_refresh:
         if st.button("🔄 Sortear Novas Palavras"):
-            st.session_state.palavras_aleatorias = random.sample(st.session_state.todas_palavras, 4)
-
+            if len(st.session_state.todas_palavras) >= 4:
+                st.session_state.palavras_aleatorias = random.sample(
+                    st.session_state.todas_palavras, 4
+                )
+                
     df_palavras = pd.DataFrame(st.session_state.palavras_aleatorias)
     st.dataframe(df_palavras, use_container_width=True)
 

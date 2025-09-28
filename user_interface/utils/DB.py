@@ -1,8 +1,7 @@
 from pydantic import BaseModel
-import pymssql
+import pyodbc
 from datetime import datetime
 import streamlit as st
-import random
 
 
 class Words(BaseModel):
@@ -15,6 +14,7 @@ class Words(BaseModel):
     updated_at: datetime = datetime.now()
     user_id: int = 1
 
+
 class Sentences(BaseModel):
     sentence_id: int = 0
     word_id: int
@@ -26,15 +26,26 @@ class Sentences(BaseModel):
     registered_at: datetime = None
     updated_at: datetime = None
 
-class Database():
+
+class Database:
     server = 'restdb.database.windows.net'
     database = 'Wise-Englishman-Database'
     username = 'boss'
-    password = 'STUDY!english' 
+    password = 'STUDY!english'
 
-
+    @staticmethod
     def get_connection():
-        return pymssql.connect(server=Database.server, user=Database.username, password=Database.password, database=Database.database, port = 1433)
+        connection_string = (
+            "DRIVER={ODBC Driver 18 for SQL Server};"
+            f"SERVER={Database.server},1433;"
+            f"DATABASE={Database.database};"
+            f"UID={Database.username};"
+            f"PWD={Database.password};"
+            "Encrypt=yes;"
+            "TrustServerCertificate=no;"
+            "Connection Timeout=30;"
+        )
+        return pyodbc.connect(connection_string)
 
     @staticmethod
     def insert_word(word: Words):
@@ -45,7 +56,7 @@ class Database():
             query = """
             INSERT INTO words 
             (user_id, word, translation, description, formality_level, grammatical_class, updated_at)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             """
 
             cursor.execute(query, (
@@ -62,67 +73,58 @@ class Database():
             cursor.close()
             conn.close()
         except Exception as e:
-            print(e)
+            st.error(f"Erro ao inserir palavra: {e}")
 
     @staticmethod
     def get_latest_words(limit=5):
         try:
             conn = Database.get_connection()
             cursor = conn.cursor()
-            query = """
-            SELECT word, translation FROM words
+            query = f"""
+            SELECT TOP {limit} word, translation 
+            FROM words
             ORDER BY created_at DESC
-            LIMIT %s
             """
-            cursor.execute(query, (limit,))
+            cursor.execute(query)
             results = cursor.fetchall()
             cursor.close()
             conn.close()
             return results
         except Exception as e:
+            st.error(f"Erro ao buscar últimas palavras: {e}")
             return []
 
     @staticmethod
     def get_random_word():
-        print("Legal")
-        
         try:
-            print("Branco")
             conn = Database.get_connection()
-            print("Guilherme")
             cursor = conn.cursor()
-            print("Hugo")
             query = """
-            SELECT TOP 5 word, translation FROM words
+            SELECT TOP 5 word, translation 
+            FROM words
             ORDER BY NEWID()
             """
-            print("Azul")
             cursor.execute(query)
-            print("Preto")
             result = cursor.fetchall()
-            print("Amarelo")
             cursor.close()
-            print("Verde")
             conn.close()
-            print ("Lsaranja")
             return result
         except Exception as e:
-            st.write(e)
-    
-
+            st.error(f"Erro ao buscar palavra aleatória: {e}")
+            return []
 
     @staticmethod
-    def adicionar_frase(sentences:Sentences):
+    def adicionar_frase(sentences: Sentences):
         try:
             conn = Database.get_connection()
             cursor = conn.cursor()
             query = """
             INSERT INTO sentences 
             (word_id, sentence, grammar_score, vocabulary_score, naturalness_score, punctuation_score, updated_at)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             """
 
-            cursor.execute(query,(
+            cursor.execute(query, (
                 sentences.word_id,
                 sentences.sentence,
                 sentences.grammar_score,
@@ -135,24 +137,27 @@ class Database():
             cursor.close()
             conn.close()
         except Exception as e:
-            st.error(f"Erro ao inserir palavra: {e}")
+            st.error(f"Erro ao inserir frase: {e}")
 
     @staticmethod
     def buscar_frases(word):
-    
-        # Busca todas as frases associadas a uma palavra
         try:
             conn = Database.get_connection()
             cursor = conn.cursor()
-            cursor.execute("SELECT TOP 1 words.word_id FROM words WHERE word=%s", (word))
+            cursor.execute("SELECT TOP 1 word_id FROM words WHERE word = ?", (word,))
             result = cursor.fetchone()
             if not result:
                 return []
-            word_id = result['word_id']
-            cursor.execute("SELECT sentence FROM sentences WHERE word_id=%s ORDER BY created_at DESC", (word_id))
+
+            word_id = result.word_id
+            cursor.execute(
+                "SELECT sentence, grammar_score, vocabulary_score, naturalness_score, punctuation_score FROM sentences WHERE word_id = ? ORDER BY updated_at DESC",
+                (word_id,)
+            )
             frases = cursor.fetchall()
+            return frases
         except Exception as e:
-            print(f"error: {e}")
+            st.error(f"Erro ao buscar frases: {e}")
             return []
         finally:
             cursor.close()
@@ -160,57 +165,55 @@ class Database():
 
     @staticmethod
     def buscar_palavras_nao_aprendidas():
-        conn = Database.get_connection()
-        cursor = conn.cursor()
         try:
+            conn = Database.get_connection()
+            cursor = conn.cursor()
             cursor.execute("SELECT word FROM words")
             todas = cursor.fetchall()
-        except Exception as e:
-            print(f"error: {e}")
-            return[]
-        finally:
             cursor.close()
             conn.close()
+        except Exception as e:
+            st.error(f"Erro ao buscar palavras: {e}")
+            return []
 
         nao_aprendidas = []
         for p in todas:
-            frases = Database.buscar_frases(p['word'])
+            frases = Database.buscar_frases(p.word)
             if not frases:
-                nao_aprendidas.append({"word": p['word'], "quantidade_frases": 0})
+                nao_aprendidas.append({"word": p.word, "quantidade_frases": 0})
                 continue
+
             media = sum(
-                (f['grammar_score'] + f['vocabulary_score'] + f['naturalness_score'] + f['punctuation_score']) / 4
+                (f.grammar_score + f.vocabulary_score + f.naturalness_score + f.punctuation_score) / 4
                 for f in frases
-                ) / len(frases)
+            ) / len(frases)
 
             if media <= 7:
-                nao_aprendidas.append({"word": p['word'], "quantidade_frases": len(frases)})
+                nao_aprendidas.append({"word": p.word, "quantidade_frases": len(frases)})
 
         return nao_aprendidas
 
     @staticmethod
-    def detalhes_da_palavra(word):
-
-        conn = Database.get_connection()
-        cursor = conn.cursor()
+    def detalhes_da_palavra(word: Words):
         try:
+            conn = Database.get_connection()
+            cursor = conn.cursor()
             cursor.execute("""
-                SELECT translation, description, formality_level, grammatical_class
-                TOP 1
+                SELECT TOP 1 translation, description, formality_level, grammatical_class
                 FROM words
-                WHERE words.word = %s
+                WHERE word = ?
                 ORDER BY created_at DESC
-                """, (word.word))
-            row = cursor.fetchone() or {}
-            return row
+            """, (word.word,))
+            row = cursor.fetchone()
+            return row if row else {}
         except Exception as e:
-            print(f"error: {e}")
-            return []
+            st.error(f"Erro ao buscar detalhes da palavra: {e}")
+            return {}
         finally:
             cursor.close()
             conn.close()
 
 
 # EXECUÇÃO INICIAL
-    if __name__ == "__main__":
-        print("Banco configurado!")
+if __name__ == "__main__":
+    print("Banco configurado!")
