@@ -52,14 +52,14 @@ def app():
     # Área principal - palavras aleatórias
 
     st.subheader("Palavras Aleatórias")
-    col_refresh, col_blank = st.columns([1, 5])
+    col_refresh, col_blank = st.columns([2, 4])
     with col_refresh:
         if st.button("🔄 Sortear Novas Palavras"):
             if len(st.session_state.todas_palavras) >= 4:
                 st.session_state.palavras_aleatorias = random.sample(
                     st.session_state.todas_palavras, 4
                 )
-                
+
     df_palavras = pd.DataFrame(st.session_state.palavras_aleatorias)
     st.dataframe(df_palavras, use_container_width=True)
 
@@ -75,15 +75,16 @@ def app():
     with col_btn1:
         # Botão para salvar a frase
         if st.button("💾 Salvar Frase"):
+            
             if palavra_input and frase_input:
                 nova_frase = {
                     "Frase": frase_input,
                 }
                 if palavra_input not in st.session_state.frases_por_palavra:
                     st.session_state.frases_por_palavra[palavra_input] = []
-                st.session_state.frases_por_palavra[palavra_input].append(nova_frase)
-                st.session_state.ultima_frase = nova_frase
-                st.success("✅ Frase salva com sucesso!")
+                    st.session_state.frases_por_palavra[palavra_input].append(nova_frase)
+                    st.session_state.ultima_frase = nova_frase
+                    st.success("✅ Frase salva com sucesso!")
             else:
                 st.warning("⚠️ Preencha a palavra e a frase antes de salvar.")
 
@@ -102,13 +103,16 @@ def app():
 
     if palavra_input:
         st.subheader("Detalhes da Palavra (preenchidos pelo backend)")
-
-        detalhes = db.detalhes_da_palavra(palavra_input)
-
-        traducao = detalhes[0] if detalhes else ""
-        descricao = detalhes[1] if detalhes else ""
-        formalidade = detalhes[2] if detalhes else ""
-        classe = detalhes[3] if detalhes else ""
+        word_obj = Words(word=palavra_input, translation="")
+        detalhes = db.detalhes_da_palavra(word_obj)
+        if detalhes:
+            traducao = detalhes[0] if detalhes else ""
+            descricao = detalhes[1] if detalhes else ""
+            formalidade = detalhes[2] if detalhes else ""
+            classe = detalhes[3] if detalhes else ""
+        else:
+            st.warning("Palavra não encontrada no banco de dados.")
+            traducao = descricao = formalidade = classe = ""
 
         col_d1, col_d2, col_d3, col_d4, col_d5 = st.columns(5)
         with col_d1:

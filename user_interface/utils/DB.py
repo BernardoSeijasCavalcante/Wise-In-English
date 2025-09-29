@@ -83,7 +83,7 @@ class Database:
             query = f"""
             SELECT TOP {limit} word, translation 
             FROM words
-            ORDER BY created_at DESC
+            ORDER BY updated_at DESC
             """
             cursor.execute(query)
             results = cursor.fetchall()
@@ -136,8 +136,10 @@ class Database:
             conn.commit()
             cursor.close()
             conn.close()
+            return True
         except Exception as e:
             st.error(f"Erro ao inserir frase: {e}")
+            return False
 
     @staticmethod
     def buscar_frases(word):
@@ -202,7 +204,7 @@ class Database:
                 SELECT TOP 1 translation, description, formality_level, grammatical_class
                 FROM words
                 WHERE word = ?
-                ORDER BY created_at DESC
+                ORDER BY updated_at DESC
             """, (word.word,))
             row = cursor.fetchone()
             return row if row else {}
