@@ -2,7 +2,8 @@ import streamlit as st
 import pandas as pd
 import random
 import user_interface.utils.sidebar_model as sm
-from user_interface.utils.DB import Words, Database
+
+from user_interface.utils.DB import Words, Database, Sentences
 
 
 
@@ -77,14 +78,28 @@ def app():
         if st.button("💾 Salvar Frase"):
             
             if palavra_input and frase_input:
-                nova_frase = {
-                    "Frase": frase_input,
-                }
+                word_id_aux = db.buscar_word_id(palavra_input)
+                
+                sentences_obj = Sentences(
+                    sentence_id = 0,
+                    word_id = word_id_aux,
+                    sentence=frase_input,
+                    grammar_score=10.0,
+                    vocabulary_score=10.0,
+                    naturalness_score=10.0,
+                    punctuation_score=10.0
+                )
+                sucesso = db.adicionar_frase(sentences_obj)
+
+                if sucesso:
+                    nova_frase = {
+                        "Frase": frase_input,
+                    }
                 if palavra_input not in st.session_state.frases_por_palavra:
                     st.session_state.frases_por_palavra[palavra_input] = []
-                    st.session_state.frases_por_palavra[palavra_input].append(nova_frase)
-                    st.session_state.ultima_frase = nova_frase
-                    st.success("✅ Frase salva com sucesso!")
+                st.session_state.frases_por_palavra[palavra_input].append(nova_frase)
+                st.session_state.ultima_frase = nova_frase
+                st.success("✅ Frase salva com sucesso!")
             else:
                 st.warning("⚠️ Preencha a palavra e a frase antes de salvar.")
 

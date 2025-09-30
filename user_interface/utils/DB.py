@@ -17,7 +17,7 @@ class Words(BaseModel):
 
 class Sentences(BaseModel):
     sentence_id: int = 0
-    word_id: int
+    word_id: int = 0
     sentence: str
     grammar_score: float
     vocabulary_score: float
@@ -112,6 +112,23 @@ class Database:
         except Exception as e:
             st.error(f"Erro ao buscar palavra aleatória: {e}")
             return []
+        
+    @staticmethod
+    def buscar_word_id(word):
+        try:
+            conn = Database.get_connection()
+            cursor = conn.cursor()
+            cursor.execute("SELECT word_id FROM words WHERE word = ?", (word))
+            result = cursor.fetchone()
+            cursor.close()
+            conn.close()
+            if result:
+                return result[0]
+            else:
+                return None
+        except Exception as e:
+            st.error(f"Erro ao buscar word_id: {e}")
+            return None
 
     @staticmethod
     def adicionar_frase(sentences: Sentences):
@@ -146,15 +163,15 @@ class Database:
         try:
             conn = Database.get_connection()
             cursor = conn.cursor()
-            cursor.execute("SELECT TOP 1 word_id FROM words WHERE word = ?", (word,))
+            cursor.execute("SELECT TOP 1 word_id FROM words WHERE word = ?", (word))
             result = cursor.fetchone()
             if not result:
                 return []
 
-            word_id = result.word_id
+            word_id = result[0]
             cursor.execute(
                 "SELECT sentence, grammar_score, vocabulary_score, naturalness_score, punctuation_score FROM sentences WHERE word_id = ? ORDER BY updated_at DESC",
-                (word_id,)
+                (word_id)
             )
             frases = cursor.fetchall()
             return frases
@@ -170,7 +187,7 @@ class Database:
         try:
             conn = Database.get_connection()
             cursor = conn.cursor()
-            cursor.execute("SELECT word FROM words")
+            cursor.execute("SELECT word FROM words ORDER BY RAND()")
             todas = cursor.fetchall()
             cursor.close()
             conn.close()
@@ -179,19 +196,25 @@ class Database:
             return []
 
         nao_aprendidas = []
+        limit_nao_aprendidas = 0
+        media = 0
         for p in todas:
-            frases = Database.buscar_frases(p.word)
+            if limit_nao_aprendidas >= 4:
+                break
+            
+            frases = Database.buscar_frases(p[0])
             if not frases:
-                nao_aprendidas.append({"word": p.word, "quantidade_frases": 0})
+                nao_aprendidas.append({"word": p[0], "quantidade_frases": len(frases)})
+                limit_nao_aprendidas += 1
                 continue
-
-            media = sum(
-                (f.grammar_score + f.vocabulary_score + f.naturalness_score + f.punctuation_score) / 4
-                for f in frases
-            ) / len(frases)
-
+            
+            for f in frases:
+                media += float(f[1] + f[2] + f[3] + f[4]) / 4.0 / (len(frases))
+            
             if media <= 7:
-                nao_aprendidas.append({"word": p.word, "quantidade_frases": len(frases)})
+                print(len(frases) , "")
+                nao_aprendidas.append({"word": p.word, "quantidade_frases": (len(frases))})
+                limit_nao_aprendidas += 1
 
         return nao_aprendidas
 
