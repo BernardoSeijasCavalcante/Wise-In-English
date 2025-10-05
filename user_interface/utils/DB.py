@@ -2,7 +2,7 @@ from pydantic import BaseModel
 import pyodbc
 from datetime import datetime
 import streamlit as st
-
+import re
 
 class Words(BaseModel):
     word_id: int = 0
@@ -182,41 +182,58 @@ class Database:
             cursor.close()
             conn.close()
 
+
     @staticmethod
     def buscar_palavras_nao_aprendidas():
         try:
             conn = Database.get_connection()
             cursor = conn.cursor()
-            cursor.execute("SELECT word FROM words ORDER BY RAND()")
-            todas = cursor.fetchall()
+            
+            cursor.execute("SELECT TOP 1 word, word_id FROM words ORDER BY NEWID()") 
+            p = cursor.fetchone()  
+
+            
+            if not p:
+                cursor.close()
+                conn.close()
+                return [] 
+            
+            word = p[0]
+            word_id = p[1]
+
+            frases = Database.buscar_frases_por_word_id(word_id)
+            
+            total_occurrences = 0
+            for frase in frases:   
+                total_occurrences += 1
+
+            
             cursor.close()
             conn.close()
+            
+            return [{"word": word, "quantidade_frases": total_occurrences}]
+            
         except Exception as e:
             st.error(f"Erro ao buscar palavras: {e}")
             return []
 
-        nao_aprendidas = []
-        limit_nao_aprendidas = 0
-        media = 0
-        for p in todas:
-            if limit_nao_aprendidas >= 4:
-                break
-            
-            frases = Database.buscar_frases(p[0])
-            if not frases:
-                nao_aprendidas.append({"word": p[0], "quantidade_frases": len(frases)})
-                limit_nao_aprendidas += 1
-                continue
-            
-            for f in frases:
-                media += float(f[1] + f[2] + f[3] + f[4]) / 4.0 / (len(frases))
-            
-            if media <= 7:
-                print(len(frases) , "")
-                nao_aprendidas.append({"word": p.word, "quantidade_frases": (len(frases))})
-                limit_nao_aprendidas += 1
+    @staticmethod
+    def buscar_frases_por_word_id(word_id):
+        try:
+            conn = Database.get_connection()
+            cursor = conn.cursor()
 
-        return nao_aprendidas
+            cursor.execute("SELECT sentence FROM sentences WHERE word_id = ?", (word_id,))
+            frases = cursor.fetchall()
+
+
+            return [frase[0] for frase in frases] 
+        except Exception as e:
+            st.error(f"Erro ao buscar frases para o word_id {word_id}: {e}")
+            return []
+        finally: 
+            cursor.close()
+            conn.close()
 
     @staticmethod
     def detalhes_da_palavra(word: Words):
