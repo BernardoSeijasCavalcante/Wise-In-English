@@ -182,37 +182,38 @@ class Database:
             cursor.close()
             conn.close()
 
-
     @staticmethod
     def buscar_palavras_nao_aprendidas():
         try:
             conn = Database.get_connection()
             cursor = conn.cursor()
             
-            cursor.execute("SELECT TOP 1 word, word_id FROM words ORDER BY NEWID()") 
-            p = cursor.fetchone()  
+            cursor.execute("SELECT TOP 4 word, word_id FROM words ORDER BY NEWID()") 
+            palavras = cursor.fetchall() 
 
-            
-            if not p:
+            if not palavras:
                 cursor.close()
                 conn.close()
                 return [] 
             
-            word = p[0]
-            word_id = p[1]
+            resultado = []
+            for p in palavras:
+                word = p[0]
+                word_id = p[1]
 
-            frases = Database.buscar_frases_por_word_id(word_id)
-            
-            total_occurrences = 0
-            for frase in frases:   
-                total_occurrences += 1
+                frases = Database.buscar_frases_por_word_id(word_id)
+                
+                total_occurrences = 0
+                for frase in frases:   
+                    total_occurrences += 1
 
+                resultado.append({"word": word, "quantidade_frases": total_occurrences})
             
             cursor.close()
             conn.close()
             
-            return [{"word": word, "quantidade_frases": total_occurrences}]
-            
+            return resultado
+                
         except Exception as e:
             st.error(f"Erro ao buscar palavras: {e}")
             return []
