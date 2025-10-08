@@ -11,6 +11,7 @@ def app():
     st.write("Média de Avaliação Geral: 0.0")
     st.write("Média de Avaliação em Gramática: 0.0")
     st.write("...")
+    
 
     sm.sidebar_load(st)
     

@@ -188,7 +188,7 @@ class Database:
             conn = Database.get_connection()
             cursor = conn.cursor()
             
-            cursor.execute("SELECT TOP 4 word, word_id FROM words ORDER BY NEWID()") 
+            cursor.execute("SELECT TOP 30 word, word_id FROM words ORDER BY NEWID()") 
             palavras = cursor.fetchall() 
 
             if not palavras:
