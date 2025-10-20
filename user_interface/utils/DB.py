@@ -2,7 +2,8 @@ from pydantic import BaseModel
 import pyodbc
 from datetime import datetime
 import streamlit as st
-import re
+
+#from user_interface.utils.DB import Words, Database, Sentences
 
 class Words(BaseModel):
     word_id: int = 0
@@ -170,7 +171,7 @@ class Database:
 
             word_id = result[0]
             cursor.execute(
-                "SELECT sentence, grammar_score, vocabulary_score, naturalness_score, punctuation_score FROM sentences WHERE word_id = ? ORDER BY updated_at DESC",
+                "SELECT sentence_id, sentence, grammar_score, vocabulary_score, naturalness_score, punctuation_score FROM sentences WHERE word_id = ? ORDER BY updated_at DESC",
                 (word_id)
             )
             frases = cursor.fetchall()
@@ -256,6 +257,143 @@ class Database:
             cursor.close()
             conn.close()
 
+    @staticmethod
+    def get_dashboard_metrics():
+        try:
+            conn = Database.get_connection()
+            cursor = conn.cursor()
+
+            # 1. Total de Palavras Descobertas
+            cursor.execute("SELECT COUNT(word_id) FROM words")
+            total_palavras = cursor.fetchone()[0]
+
+            # 2. Total de Frases Criadas
+            cursor.execute("SELECT COUNT(sentence_id) FROM sentences")
+            total_frases = cursor.fetchone()[0]
+
+            # 3. Média de Avaliação Geral e por Categoria
+            cursor.execute("""
+                SELECT 
+                    AVG(grammar_score), 
+                    AVG(vocabulary_score), 
+                    AVG(naturalness_score), 
+                    AVG(punctuation_score)
+                FROM sentences
+            """)
+            avg_scores = cursor.fetchone()
+            
+            # Se não houver frases, as médias serão None, trate para 0.0
+            grammar_avg = avg_scores[0] if avg_scores[0] is not None else 0.0
+            vocabulary_avg = avg_scores[1] if avg_scores[1] is not None else 0.0
+            naturalness_avg = avg_scores[2] if avg_scores[2] is not None else 0.0
+            punctuation_avg = avg_scores[3] if avg_scores[3] is not None else 0.0
+            
+            geral_avg = (grammar_avg + vocabulary_avg + naturalness_avg + punctuation_avg) / 4
+
+            cursor.close()
+            conn.close()
+            
+            return {
+                "total_palavras": total_palavras,
+                "total_frases": total_frases,
+                "media_geral": geral_avg,
+                "media_gramatica": grammar_avg,
+                "media_vocabulario": vocabulary_avg,
+                "media_naturalidade": naturalness_avg,
+                "media_pontuacao": punctuation_avg,
+            }
+
+        except Exception as e:
+            st.error(f"Erro ao buscar métricas do dashboard: {e}")
+            return {
+                "total_palavras": 0,
+                "total_frases": 0,
+                "media_geral": 0.0,
+                "media_gramatica": 0.0,
+                "media_vocabulario": 0.0,
+                "media_naturalidade": 0.0,
+                "media_pontuacao": 0.0,
+            }
+            
+    @staticmethod
+    def get_all_sentence_scores():
+        """Busca todas as pontuações de frases para gráficos."""
+        try:
+            conn = Database.get_connection()
+            cursor = conn.cursor()
+            
+            query = """
+                SELECT 
+                    grammar_score, 
+                    vocabulary_score, 
+                    naturalness_score, 
+                    punctuation_score
+                FROM sentences
+                ORDER BY registered_at DESC
+            """
+            cursor.execute(query)
+            
+            # Converte os resultados para uma lista de dicionários ou DataFrame (ideal para gráficos)
+            results = cursor.fetchall()
+            columns = [column[0] for column in cursor.description]
+            
+            conn.close()
+            
+            # Retorna uma lista de dicionários para fácil conversão em DataFrame
+            return [dict(zip(columns, row)) for row in results]
+            
+        except Exception as e:
+            st.error(f"Erro ao buscar todas as pontuações: {e}")
+            return []
+
+    @staticmethod
+    def editar_frase(sentence_id, new_sentence, grammar_score, vocabulary_score, naturalness_score, punctuation_score):
+        try:
+            conn = Database.get_connection()
+            cursor = conn.cursor()
+            
+            # Note: Atualizamos a frase e todas as notas (que podem ter sido re-avaliadas ou mantidas)
+            query = """
+            UPDATE sentences SET 
+                sentence = ?, 
+                grammar_score = ?, 
+                vocabulary_score = ?, 
+                naturalness_score = ?, 
+                punctuation_score = ?, 
+                updated_at = ?
+            WHERE sentence_id = ?
+            """
+            cursor.execute(query, (
+                new_sentence, 
+                grammar_score, 
+                vocabulary_score, 
+                naturalness_score, 
+                punctuation_score, 
+                datetime.now(),
+                sentence_id
+            ))
+            conn.commit()
+            cursor.close()
+            conn.close()
+            return True
+        except Exception as e:
+            st.error(f"Erro ao editar frase com ID {sentence_id}: {e}")
+            return False
+
+    @staticmethod
+    def apagar_frase(sentence_id):
+        try:
+            conn = Database.get_connection()
+            cursor = conn.cursor()
+            query = "DELETE FROM sentences WHERE sentence_id = ?"
+            cursor.execute(query, (sentence_id,))
+            conn.commit()
+            cursor.close()
+            conn.close()
+            return True
+        except Exception as e:
+            st.error(f"Erro ao apagar frase com ID {sentence_id}: {e}")
+            return False
 
 # EXECUÇÃO INICIAL
 if __name__ == "__main__":
