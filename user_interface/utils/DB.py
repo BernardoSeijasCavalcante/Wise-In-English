@@ -49,6 +49,29 @@ class Database:
         return pyodbc.connect(connection_string)
 
     @staticmethod
+    def validar_login(username, password):
+        try:
+            conn = Database.get_connection()
+            cursor = conn.cursor()
+
+            query = "SELECT * FROM users WHERE username = ? AND password = ?"
+
+            cursor.execute(query, (username, password))
+
+            row = cursor.fetchone()
+
+            conn.commit()
+            cursor.close()
+            conn.close()
+
+            if not row:
+                return False
+            else:
+                return True
+        except Exception as e:
+            print(e)
+
+    @staticmethod
     def insert_word(word: Words):
         try:
             conn = Database.get_connection()

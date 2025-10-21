@@ -1,11 +1,12 @@
 import streamlit as st
 from streamlit_extras.let_it_rain import rain
 from streamlit_extras.colored_header import colored_header
+from user_interface.utils.DB import Words, Database, Sentences
 
 # ===== Configuração da Página =====
 st.set_page_config(page_title="Login System", page_icon="🔐", layout="centered")
 
-
+db = Database()
 
 # ===== Funções =====
 def go_to_signup():
@@ -18,7 +19,7 @@ def go_to_login():
 def validate_login(user, pwd):
     if not user or not pwd:
         st.error("⚠ Please fill all fields.")
-    elif user == "admin" and pwd == "123":
+    elif db.validar_login(user,pwd):
         st.success("✅ Login successful!")
         st.session_state.page = "begin"
         st.rerun()
