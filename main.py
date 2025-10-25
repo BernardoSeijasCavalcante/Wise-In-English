@@ -74,7 +74,7 @@ def app():
                     <div style='width: 60%;font-size:20px; font-weight: bold;text-align:center;'>FRASES REGISTRADAS</div>
                 </div>
             </div>
-            <br>
+            <br>z
             <br>
             <div style='height: 180px;display:flex; align-items:center;justify-content:center;'>
                 <div style='border-radius:50px;background-color: #0d0e0e;width: 50%; height: 100%; display:flex;flex-direction:column; align-items:center;justify-content:center;'>

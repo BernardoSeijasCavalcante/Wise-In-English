@@ -26,14 +26,19 @@ def validate_login(user, pwd):
     else:
         st.error("❌ Invalid username or password.")
 
-def validate_signup(name, email, pwd, confirm):
-    if not name or not email or not pwd or not confirm:
+def validate_signup(username, email, pwd, confirm):
+    if not username or not email or not pwd or not confirm:
         st.error("⚠ Please fill all fields.")
-    elif pwd != confirm:
-        st.error("❌ Passwords do not match.")
-    else:
+        return
+    
+    success = db.validar_signup(username, email, pwd, confirm)
+    
+    if success:
         st.success("✅ Account created successfully! You can now log in.")
         go_to_login()
+    else:
+
+        pass
 
 
 def login():
@@ -61,7 +66,7 @@ def register():
         colored_header("🆕 Create Account", description="Join us today", color_name="green-70")
         with st.container():
             st.markdown('<div class="login-box">', unsafe_allow_html=True)
-            name = st.text_input("👤 Full Name")
+            username = st.text_input("👤 Full Name")
             email = st.text_input("📧 Email")
             password = st.text_input("🔑 Password", type="password")
             confirm_password = st.text_input("🔒 Confirm Password", type="password")
@@ -69,7 +74,7 @@ def register():
             st.markdown("</div>", unsafe_allow_html=True)
 
             if register_btn:
-                validate_signup(name, email, password, confirm_password)
+                validate_signup(username, email, password, confirm_password)
 
         st.markdown("---")
         st.write("Already have an account?")

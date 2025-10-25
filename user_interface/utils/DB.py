@@ -71,6 +71,46 @@ class Database:
         except Exception as e:
             print(e)
 
+
+    @staticmethod
+    def validar_signup(username, email, pwd, confirm):
+        try:
+            if not all([username, email, pwd, confirm]):
+                st.warning("Por favor, preencha todos os campos.")
+                return False
+
+            if pwd != confirm:
+                st.error("As senhas não coincidem.")
+                return False
+
+            conn = Database.get_connection()
+            cursor = conn.cursor()
+
+            cursor.execute("SELECT * FROM users WHERE email = ?", (email,))
+            existing_user = cursor.fetchone()
+            if existing_user:
+                st.warning("Este e-mail já está registrado.")
+                cursor.close()
+                conn.close()
+                return False
+
+            query = """
+                INSERT INTO users (username, email, password, last_activity)
+                VALUES (?, ?, ?, ?)
+            """
+            cursor.execute(query, (username, email, pwd, datetime.now()))
+            conn.commit()
+
+            cursor.close()
+            conn.close()
+
+            st.success("Cadastro realizado com sucesso!")
+            return True
+
+        except Exception as e:
+            st.error(f"Erro ao realizar cadastro: {e}")
+            return False
+
     @staticmethod
     def insert_word(word: Words):
         try:
