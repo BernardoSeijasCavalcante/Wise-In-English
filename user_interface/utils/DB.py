@@ -49,37 +49,38 @@ class Database:
         return pyodbc.connect(connection_string)
 
     @staticmethod
+
     def validar_login(username, password):
         try:
             conn = Database.get_connection()
             cursor = conn.cursor()
 
-            query = "SELECT * FROM users WHERE username = ? AND password = ?"
-
+            # Busca o ID e username do usuário
+            query = "SELECT user_id, username FROM users WHERE username = ? AND password = ?"
             cursor.execute(query, (username, password))
-
             row = cursor.fetchone()
 
-            conn.commit()
-            cursor.close()
             conn.close()
 
             if not row:
-                return False
+                return None  # login inválido
             else:
-                return True
+             # Retorna as informações do usuário logado
+                 return {"user_id": row[0], "username": row[1]}
         except Exception as e:
             print(e)
+        return None
+
 
 
     @staticmethod
-    def validar_signup(username, email, pwd, confirm):
+    def validar_signup(username, email, password, confirm):
         try:
-            if not all([username, email, pwd, confirm]):
+            if not all([username, email, password, confirm]):
                 st.warning("Por favor, preencha todos os campos.")
                 return False
 
-            if pwd != confirm:
+            if password != confirm:
                 st.error("As senhas não coincidem.")
                 return False
 
@@ -98,7 +99,7 @@ class Database:
                 INSERT INTO users (username, email, password, last_activity)
                 VALUES (?, ?, ?, ?)
             """
-            cursor.execute(query, (username, email, pwd, datetime.now()))
+            cursor.execute(query, (username, email, password, datetime.now()))
             conn.commit()
 
             cursor.close()
@@ -321,62 +322,65 @@ class Database:
             conn.close()
 
     @staticmethod
-    def get_dashboard_metrics():
+    def get_dashboard_metrics(user_id):
         try:
             conn = Database.get_connection()
             cursor = conn.cursor()
 
-            # 1. Total de Palavras Descobertas
-            cursor.execute("SELECT COUNT(word_id) FROM words")
+            # 1. Total de palavras do usuário
+            cursor.execute("SELECT COUNT(word_id) FROM words WHERE user_id = ?", (user_id,))
             total_palavras = cursor.fetchone()[0]
 
-            # 2. Total de Frases Criadas
-            cursor.execute("SELECT COUNT(sentence_id) FROM sentences")
+            # 2. Total de frases relacionadas às palavras do usuário
+            cursor.execute("""
+            SELECT COUNT(sentence_id)
+            FROM sentences
+            WHERE word_id IN (SELECT word_id FROM words WHERE user_id = ?)
+            """, (user_id,))
             total_frases = cursor.fetchone()[0]
 
-            # 3. Média de Avaliação Geral e por Categoria
+            # 3. Médias de notas (apenas das frases do usuário)
             cursor.execute("""
-                SELECT 
-                    AVG(grammar_score), 
-                    AVG(vocabulary_score), 
-                    AVG(naturalness_score), 
-                    AVG(punctuation_score)
-                FROM sentences
-            """)
+                    SELECT 
+                AVG(grammar_score), 
+                AVG(vocabulary_score), 
+                AVG(naturalness_score), 
+                AVG(punctuation_score)
+            FROM sentences
+            WHERE word_id IN (SELECT word_id FROM words WHERE user_id = ?)
+             """, (user_id,))
             avg_scores = cursor.fetchone()
-            
-            # Se não houver frases, as médias serão None, trate para 0.0
-            grammar_avg = avg_scores[0] if avg_scores[0] is not None else 0.0
-            vocabulary_avg = avg_scores[1] if avg_scores[1] is not None else 0.0
-            naturalness_avg = avg_scores[2] if avg_scores[2] is not None else 0.0
-            punctuation_avg = avg_scores[3] if avg_scores[3] is not None else 0.0
-            
+
+            grammar_avg = avg_scores[0] or 0.0
+            vocabulary_avg = avg_scores[1] or 0.0
+            naturalness_avg = avg_scores[2] or 0.0
+            punctuation_avg = avg_scores[3] or 0.0
             geral_avg = (grammar_avg + vocabulary_avg + naturalness_avg + punctuation_avg) / 4
 
             cursor.close()
             conn.close()
-            
+
             return {
-                "total_palavras": total_palavras,
-                "total_frases": total_frases,
-                "media_geral": geral_avg,
-                "media_gramatica": grammar_avg,
-                "media_vocabulario": vocabulary_avg,
-                "media_naturalidade": naturalness_avg,
-                "media_pontuacao": punctuation_avg,
-            }
+            "total_palavras": total_palavras,
+            "total_frases": total_frases,
+            "media_geral": geral_avg,
+            "media_gramatica": grammar_avg,
+            "media_vocabulario": vocabulary_avg,
+            "media_naturalidade": naturalness_avg,
+            "media_pontuacao": punctuation_avg,
+        }
 
         except Exception as e:
             st.error(f"Erro ao buscar métricas do dashboard: {e}")
             return {
-                "total_palavras": 0,
-                "total_frases": 0,
-                "media_geral": 0.0,
-                "media_gramatica": 0.0,
-                "media_vocabulario": 0.0,
-                "media_naturalidade": 0.0,
-                "media_pontuacao": 0.0,
-            }
+            "total_palavras": 0,
+            "total_frases": 0,
+            "media_geral": 0.0,
+            "media_gramatica": 0.0,
+            "media_vocabulario": 0.0,
+            "media_naturalidade": 0.0,
+            "media_pontuacao": 0.0,
+                }
             
     @staticmethod
     def get_all_sentence_scores():

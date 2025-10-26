@@ -15,7 +15,7 @@ def app():
     st.markdown("Acompanhe seu progresso e o desempenho das suas frases.")
 
     # --- 1. Carregar Métricas ---
-    metrics = db.get_dashboard_metrics()
+    metrics = db.get_dashboard_metrics(st.session_state["user_id"])
     
     # Simula a 'Total de Palavras Aprendidas' (assumindo que palavras com > 3 frases são 'aprendidas')
     # Este é um cálculo mais complexo, por simplicidade, vamos usar um valor fictício ou adicionar a função

@@ -16,22 +16,30 @@ def go_to_login():
     st.session_state.page = "login"
     st.rerun()
 
-def validate_login(user, pwd):
-    if not user or not pwd:
+def validate_login(username, password):
+    if not username or not password:
         st.error("⚠ Please fill all fields.")
-    elif db.validar_login(user,pwd):
-        st.success("✅ Login successful!")
+        return
+
+    user_data = db.validar_login(username, password)
+    if user_data:
+        # Salva o contexto do usuário logado
+        st.session_state["user_id"] = user_data["user_id"]
+        st.session_state["username"] = user_data["username"]
+
+        st.success(f"✅ Welcome, {user_data['username']}!")
         st.session_state.page = "begin"
         st.rerun()
     else:
         st.error("❌ Invalid username or password.")
 
-def validate_signup(username, email, pwd, confirm):
-    if not username or not email or not pwd or not confirm:
+
+def validate_signup(username, email, password, confirm):
+    if not username or not email or not password or not confirm:
         st.error("⚠ Please fill all fields.")
         return
     
-    success = db.validar_signup(username, email, pwd, confirm)
+    success = db.validar_signup(username, email, password, confirm)
     
     if success:
         st.success("✅ Account created successfully! You can now log in.")
