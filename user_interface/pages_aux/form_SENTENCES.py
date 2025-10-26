@@ -7,7 +7,11 @@ from openai import OpenAI
 import user_interface.utils.sidebar_model as sm
 
 # Importando as classes do seu arquivo de banco de dados
-from user_interface.utils.DB import Words, Database, Sentences
+from user_interface.utils.DB import UserRepository, WordRepository, SentenceRepository
+# 1. Instancie o banco de dados (assumindo que Database está acessível)
+UserRepository = UserRepository()
+WordRepository = WordRepository()
+SentenceRepository = SentenceRepository()
 
 # Configuração da chave da API da OpenAI
 try:
@@ -52,11 +56,11 @@ def app():
     st.set_page_config(page_title="Gerador de Frases", layout="wide")
     st.title("📝 Gerador de Frases com Avaliação IA")
 
-    db = Database()
+    SentenceRepository = SentenceRepository()
 
     # --- Inicialização do Session State ---
     if "todas_palavras" not in st.session_state:
-        st.session_state.todas_palavras = db.buscar_palavras_nao_aprendidas()
+        st.session_state.todas_palavras = SentenceRepository.buscar_palavras_nao_aprendidas()
 
     if "frases_por_palavra" not in st.session_state:
         st.session_state.frases_por_palavra = {}
@@ -82,7 +86,7 @@ def app():
         # Carrega as frases da palavra selecionada no session_state
         if palavra_input and palavra_input not in st.session_state.frases_por_palavra:
             with st.spinner("Buscando frases..."):
-                buscar_sentences = db.buscar_frases(palavra_input)
+                buscar_sentences = SentenceRepository.buscar_frases(palavra_input)
                 st.session_state.frases_por_palavra[palavra_input] = [
                     {"ID": f[0], "Frase": f[1], "Gramática": f[2], "Vocabulário": f[3], "Naturalidade": f[4], "Pontuação": f[5]}
                     for f in buscar_sentences
@@ -110,7 +114,7 @@ def app():
 
     # --- Seções que dependem de uma palavra ter sido inserida ---
     st.subheader(f"Detalhes sobre: **{palavra_input}**")
-    detalhes = db.detalhes_da_palavra(Words(word=palavra_input, translation=""))
+    detalhes = SentenceRepository.detalhes_da_palavra(Words(word=palavra_input, translation=""))
     if detalhes:
         col_d1, col_d2, col_d3 = st.columns(4)
         col_d1.metric("Tradução", detalhes[0])
@@ -125,7 +129,7 @@ def app():
     frase_input = st.text_area("Digite sua frase em inglês aqui:", key="frase_input", height=100)
 
     if st.button("💾 Salvar e Avaliar Nova Frase", type="primary", use_container_width=True):
-        word_id_aux = db.buscar_word_id(palavra_input)
+        word_id_aux = SentenceRepository.buscar_word_id(palavra_input)
         if not word_id_aux:
             st.error("Palavra não encontrada no banco de dados. Não é possível salvar a frase.")
         elif not frase_input:
@@ -139,7 +143,7 @@ def app():
                     grammar_score=scores["grammar_score"], vocabulary_score=scores["vocabulary_score"],
                     naturalness_score=scores["naturalness_score"], punctuation_score=scores["punctuation_score"]
                 )
-                if db.adicionar_frase(s_obj):
+                if SentenceRepository.adicionar_frase(s_obj):
                     
                     st.session_state.messages.append({"role": "user", "content": frase_input})              
                     st.session_state.messages.append({"role": "assistant", "content": scores["explanation"]})              
@@ -187,7 +191,7 @@ def app():
                         with st.spinner("🤖 Reavaliando com a IA..."):
                             re_scores = get_sentence_scores(edited_row["Frase"])
                         if re_scores:
-                            db.editar_frase(
+                            SentenceRepository.editar_frase(
                                 int(edited_row["ID"]), edited_row["Frase"], float(re_scores["grammar_score"]),
                                 float(re_scores["vocabulary_score"]), float(re_scores["naturalness_score"]),
                                 float(re_scores["punctuation_score"])
@@ -211,7 +215,7 @@ def app():
                     with st.spinner("🤖 Reavaliando com a IA..."):
                         re_scores = get_sentence_scores(row_data["Frase"])
                     if re_scores:
-                        db.editar_frase(
+                        SentenceRepository.editar_frase(
                             int(row_data["ID"]), row_data["Frase"], float(re_scores["grammar_score"]),
                             float(re_scores["vocabulary_score"]), float(re_scores["naturalness_score"]),
                             float(re_scores["punctuation_score"])
@@ -227,7 +231,7 @@ def app():
                 
                 confirm_col, cancel_col = st.columns(2)
                 if confirm_col.button("Sim, apagar", type="primary", use_container_width=True):
-                    success_count = sum(1 for sid in ids_para_apagar if db.apagar_frase(sid))
+                    success_count = sum(1 for sid in ids_para_apagar if SentenceRepository.apagar_frase(sid))
                     st.success(f"🗑️ {success_count} frase(s) apagada(s) com sucesso!")
                     del st.session_state['phrases_to_delete']
                     st.session_state.frases_por_palavra.pop(palavra_input, None)

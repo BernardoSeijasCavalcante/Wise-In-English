@@ -1,12 +1,16 @@
 import streamlit as st
 import pandas as pd
 import random
-from user_interface.utils.DB import Words, Database
 import user_interface.utils.sidebar_model as sm
+from user_interface.utils.DB import UserRepository, WordRepository, SentenceRepository
+# 1. Instancie o banco de dados (assumindo que Database está acessível)
+UserRepository = UserRepository()
+WordRepository = WordRepository()
+SentenceRepository = SentenceRepository()
 
 def app():
 
-    db = Database()
+    WordRepository = WordRepository()
     
     st.title("Registro de Palavras")
     st.markdown("---")
@@ -36,14 +40,14 @@ def app():
                     user_id=1
                 )
 
-                db.insert_word(nova_palavra)
+                WordRepository.insert_word(nova_palavra)
 
                 st.success("Palavra registrada com sucesso!")
             
 
     with col2:
         matriz = [[0 for j in range(2)] for i in range(5)]
-        results = db.get_random_word()
+        results = WordRepository.get_random_word()
 
         guia = 0
 
@@ -58,7 +62,7 @@ def app():
         st.text("")
         st.text("")
 
-        results = db.get_random_word()
+        results = WordRepository.get_random_word()
 
         guia = 0
         for row in results:

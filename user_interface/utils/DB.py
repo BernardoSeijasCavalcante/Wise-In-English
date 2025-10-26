@@ -2,8 +2,8 @@ from pydantic import BaseModel
 import pyodbc
 from datetime import datetime
 import streamlit as st
-
-#from user_interface.utils.DB import Words, Database, Sentences
+from user_interface.utils.config import DB_CONFIG
+#from user_interface.utils.DB import Words, ConnectionManager, Sentences
 
 class Words(BaseModel):
     word_id: int = 0
@@ -28,31 +28,30 @@ class Sentences(BaseModel):
     updated_at: datetime = None
 
 
-class Database:
-    server = 'restdb.database.windows.net'
-    database = 'Wise-Englishman-Database'
-    username = 'boss'
-    password = 'STUDY!english'
-
+class ConnectionManager:
     @staticmethod
     def get_connection():
-        connection_string = (
-            "DRIVER={ODBC Driver 18 for SQL Server};"
-            f"SERVER={Database.server},1433;"
-            f"DATABASE={Database.database};"
-            f"UID={Database.username};"
-            f"PWD={Database.password};"
+        conn_str = (
+            f"DRIVER={{{DB_CONFIG['driver']}}};"
+            f"SERVER={DB_CONFIG['server']},1433;"
+            f"DATABASE={DB_CONFIG['database']};"
+            f"UID={DB_CONFIG['username']};"
+            f"PWD={DB_CONFIG['password']};"
             "Encrypt=yes;"
             "TrustServerCertificate=no;"
             "Connection Timeout=30;"
         )
-        return pyodbc.connect(connection_string)
+        return pyodbc.connect(conn_str)
+    
+# EXECUÇÃO INICIAL
+if __name__ == "__main__":
+    print("Banco configurado!")
 
+class UserRepository:
     @staticmethod
-
     def validar_login(username, password):
         try:
-            conn = Database.get_connection()
+            conn = ConnectionManager.get_connection()
             cursor = conn.cursor()
 
             # Busca o ID e username do usuário
@@ -71,8 +70,6 @@ class Database:
             print(e)
         return None
 
-
-
     @staticmethod
     def validar_signup(username, email, password, confirm):
         try:
@@ -84,7 +81,7 @@ class Database:
                 st.error("As senhas não coincidem.")
                 return False
 
-            conn = Database.get_connection()
+            conn = ConnectionManager.get_connection()
             cursor = conn.cursor()
 
             cursor.execute("SELECT * FROM users WHERE email = ?", (email,))
@@ -112,10 +109,12 @@ class Database:
             st.error(f"Erro ao realizar cadastro: {e}")
             return False
 
+
+class WordRepository:
     @staticmethod
     def insert_word(word: Words):
         try:
-            conn = Database.get_connection()
+            conn = ConnectionManager.get_connection()
             cursor = conn.cursor()
 
             query = """
@@ -143,7 +142,7 @@ class Database:
     @staticmethod
     def get_latest_words(limit=5):
         try:
-            conn = Database.get_connection()
+            conn = ConnectionManager.get_connection()
             cursor = conn.cursor()
             query = f"""
             SELECT TOP {limit} word, translation 
@@ -159,10 +158,11 @@ class Database:
             st.error(f"Erro ao buscar últimas palavras: {e}")
             return []
 
+class SentenceRepository:
     @staticmethod
     def get_random_word():
         try:
-            conn = Database.get_connection()
+            conn = ConnectionManager.get_connection()
             cursor = conn.cursor()
             query = """
             SELECT TOP 5 word, translation 
@@ -181,7 +181,7 @@ class Database:
     @staticmethod
     def buscar_word_id(word):
         try:
-            conn = Database.get_connection()
+            conn = ConnectionManager.get_connection()
             cursor = conn.cursor()
             cursor.execute("SELECT word_id FROM words WHERE word = ?", (word))
             result = cursor.fetchone()
@@ -198,7 +198,7 @@ class Database:
     @staticmethod
     def adicionar_frase(sentences: Sentences):
         try:
-            conn = Database.get_connection()
+            conn = ConnectionManager.get_connection()
             cursor = conn.cursor()
             query = """
             INSERT INTO sentences 
@@ -226,7 +226,7 @@ class Database:
     @staticmethod
     def buscar_frases(word):
         try:
-            conn = Database.get_connection()
+            conn = ConnectionManager.get_connection()
             cursor = conn.cursor()
             cursor.execute("SELECT TOP 1 word_id FROM words WHERE word = ?", (word))
             result = cursor.fetchone()
@@ -250,7 +250,7 @@ class Database:
     @staticmethod
     def buscar_palavras_nao_aprendidas():
         try:
-            conn = Database.get_connection()
+            conn = ConnectionManager.get_connection()
             cursor = conn.cursor()
             
             cursor.execute("SELECT TOP 30 word, word_id FROM words ORDER BY NEWID()") 
@@ -266,7 +266,7 @@ class Database:
                 word = p[0]
                 word_id = p[1]
 
-                frases = Database.buscar_frases_por_word_id(word_id)
+                frases = ConnectionManager.buscar_frases_por_word_id(word_id)
                 
                 total_occurrences = 0
                 for frase in frases:   
@@ -286,7 +286,7 @@ class Database:
     @staticmethod
     def buscar_frases_por_word_id(word_id):
         try:
-            conn = Database.get_connection()
+            conn = ConnectionManager.get_connection()
             cursor = conn.cursor()
 
             cursor.execute("SELECT sentence FROM sentences WHERE word_id = ?", (word_id,))
@@ -304,7 +304,7 @@ class Database:
     @staticmethod
     def detalhes_da_palavra(word: Words):
         try:
-            conn = Database.get_connection()
+            conn = ConnectionManager.get_connection()
             cursor = conn.cursor()
             cursor.execute("""
                 SELECT TOP 1 translation, description, formality_level, grammatical_class
@@ -324,7 +324,7 @@ class Database:
     @staticmethod
     def get_dashboard_metrics(user_id):
         try:
-            conn = Database.get_connection()
+            conn = ConnectionManager.get_connection()
             cursor = conn.cursor()
 
             # 1. Total de palavras do usuário
@@ -386,7 +386,7 @@ class Database:
     def get_all_sentence_scores():
         """Busca todas as pontuações de frases para gráficos."""
         try:
-            conn = Database.get_connection()
+            conn = ConnectionManager.get_connection()
             cursor = conn.cursor()
             
             query = """
@@ -416,7 +416,7 @@ class Database:
     @staticmethod
     def editar_frase(sentence_id, new_sentence, grammar_score, vocabulary_score, naturalness_score, punctuation_score):
         try:
-            conn = Database.get_connection()
+            conn = ConnectionManager.get_connection()
             cursor = conn.cursor()
             
             # Note: Atualizamos a frase e todas as notas (que podem ter sido re-avaliadas ou mantidas)
@@ -450,7 +450,7 @@ class Database:
     @staticmethod
     def apagar_frase(sentence_id):
         try:
-            conn = Database.get_connection()
+            conn = ConnectionManager.get_connection()
             cursor = conn.cursor()
             query = "DELETE FROM sentences WHERE sentence_id = ?"
             cursor.execute(query, (sentence_id,))
@@ -462,6 +462,4 @@ class Database:
             st.error(f"Erro ao apagar frase com ID {sentence_id}: {e}")
             return False
 
-# EXECUÇÃO INICIAL
-if __name__ == "__main__":
-    print("Banco configurado!")
+
