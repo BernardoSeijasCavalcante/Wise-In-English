@@ -31,7 +31,7 @@ class Sentences(BaseModel):
 class ConnectionManager:
     @staticmethod
     def get_connection():
-        conn_str = (
+        connection_string = (
             f"DRIVER={{{DB_CONFIG['driver']}}};"
             f"SERVER={DB_CONFIG['server']},1433;"
             f"DATABASE={DB_CONFIG['database']};"
@@ -41,7 +41,7 @@ class ConnectionManager:
             "TrustServerCertificate=no;"
             "Connection Timeout=30;"
         )
-        return pyodbc.connect(conn_str)
+        return pyodbc.connect(connection_string)
     
 # EXECUÇÃO INICIAL
 if __name__ == "__main__":
@@ -266,7 +266,7 @@ class SentenceRepository:
                 word = p[0]
                 word_id = p[1]
 
-                frases = ConnectionManager.buscar_frases_por_word_id(word_id)
+                frases = SentenceRepository.buscar_frases_por_word_id(word_id)
                 
                 total_occurrences = 0
                 for frase in frases:   

@@ -1,12 +1,12 @@
 import streamlit as st
 from streamlit_extras.let_it_rain import rain
 from streamlit_extras.colored_header import colored_header
-from user_interface.utils.DB import UserRepository, WordRepository, SentenceRepository
+from user_interface.utils.DB import UserRepository
 
 # ===== Configuração da Página =====
 st.set_page_config(page_title="Login System", page_icon="🔐", layout="centered")
 
-UserRepository = UserRepository()
+db = UserRepository()
 
 # ===== Funções =====
 def go_to_signup():
@@ -21,7 +21,7 @@ def validate_login(username, password):
         st.error("⚠ Please fill all fields.")
         return
 
-    user_data = UserRepository.validar_login(username, password)
+    user_data = db.validar_login(username, password)
     if user_data:
         # Salva o contexto do usuário logado
         st.session_state["user_id"] = user_data["user_id"]
@@ -39,7 +39,7 @@ def validate_signup(username, email, password, confirm):
         st.error("⚠ Please fill all fields.")
         return
     
-    success = UserRepository.validar_signup(username, email, password, confirm)
+    success = db.validar_signup(username, email, password, confirm)
     
     if success:
         st.success("✅ Account created successfully! You can now log in.")

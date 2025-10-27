@@ -3,11 +3,11 @@ import user_interface.utils.sidebar_model as sm
 
 import pandas as pd
 import plotly.express as px
-from user_interface.utils.DB import UserRepository, WordRepository, SentenceRepository
+from user_interface.utils.DB import SentenceRepository
 # 1. Instancie o banco de dados (assumindo que Database está acessível)
-UserRepository = UserRepository()
-WordRepository = WordRepository()
-SentenceRepository = SentenceRepository()
+
+db = SentenceRepository()
+
 
 def app():
     # Configuração de página para melhor visualização (pode ser globalmente no main.py)
@@ -17,7 +17,7 @@ def app():
     st.markdown("Acompanhe seu progresso e o desempenho das suas frases.")
 
     # --- 1. Carregar Métricas ---
-    metrics = SentenceRepository.get_dashboard_metrics(st.session_state["user_id"])
+    metrics = db.get_dashboard_metrics(st.session_state["user_id"])
     
     # Simula a 'Total de Palavras Aprendidas' (assumindo que palavras com > 3 frases são 'aprendidas')
     # Este é um cálculo mais complexo, por simplicidade, vamos usar um valor fictício ou adicionar a função
@@ -86,7 +86,7 @@ def app():
     
     st.header("Gráficos de Desempenho")
     
-    scores_data = SentenceRepository.get_all_sentence_scores()
+    scores_data = db.get_all_sentence_scores()
     
     if scores_data:
         df_scores = pd.DataFrame(scores_data)
