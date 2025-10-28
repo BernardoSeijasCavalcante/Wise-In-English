@@ -138,6 +138,28 @@ class WordRepository:
             conn.close()
         except Exception as e:
             st.error(f"Erro ao inserir palavra: {e}")
+            
+
+    @staticmethod
+    def get_words_by_user(user_id, limit=5):
+        """Busca as palavras de um usuário específico."""
+        try:
+            conn = ConnectionManager.get_connection()
+            cursor = conn.cursor()
+            query = f"""
+            SELECT TOP {limit} word, translation
+            FROM words
+            WHERE user_id = ?
+            ORDER BY updated_at DESC
+             """
+            cursor.execute(query, (user_id,))
+            results = cursor.fetchall()
+            cursor.close()
+            conn.close()
+            return results
+        except Exception as e:
+            st.error(f"Erro ao buscar palavras do usuário: {e}")
+            return []
 
     @staticmethod
     def get_latest_words(limit=5):
@@ -248,12 +270,17 @@ class SentenceRepository:
             conn.close()
 
     @staticmethod
-    def buscar_palavras_nao_aprendidas():
+    def buscar_palavras_nao_aprendidas(user_id: int):
         try:
             conn = ConnectionManager.get_connection()
             cursor = conn.cursor()
             
-            cursor.execute("SELECT TOP 30 word, word_id FROM words ORDER BY NEWID()") 
+            cursor.execute("""
+            SELECT TOP 30 word, word_id 
+            FROM words 
+            WHERE user_id = ? 
+            ORDER BY NEWID()
+            """, (user_id,))
             palavras = cursor.fetchall() 
 
             if not palavras:
@@ -268,7 +295,7 @@ class SentenceRepository:
 
                 frases = SentenceRepository.buscar_frases_por_word_id(word_id)
                 
-                total_occurrences = 0
+                total_occurrences = len(frases)
                 for frase in frases:   
                     total_occurrences += 1
 

@@ -55,8 +55,13 @@ def app():
     db = SentenceRepository()
 
     # --- Inicialização do Session State ---
+    user_id = st.session_state.get("user_id", None) 
     if "todas_palavras" not in st.session_state:
-        st.session_state.todas_palavras = db.buscar_palavras_nao_aprendidas()
+        if user_id:
+         st.session_state.todas_palavras = db.buscar_palavras_nao_aprendidas(user_id)
+    else:
+        st.session_state.todas_palavras = []
+
 
     if "frases_por_palavra" not in st.session_state:
         st.session_state.frases_por_palavra = {}

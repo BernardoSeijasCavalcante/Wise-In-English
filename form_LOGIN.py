@@ -2,6 +2,8 @@ import streamlit as st
 from streamlit_extras.let_it_rain import rain
 from streamlit_extras.colored_header import colored_header
 from user_interface.utils.DB import UserRepository
+from observer_pattern import Subject, StreamlitNotifier, LoginLogger
+
 
 # ===== Configuração da Página =====
 st.set_page_config(page_title="Login System", page_icon="🔐", layout="centered")
@@ -16,6 +18,13 @@ def go_to_login():
     st.session_state.page = "login"
     st.rerun()
 
+login_subject = Subject()
+
+# Adicionar observadores
+login_subject = Subject()
+login_subject.add_observer(LoginLogger())
+login_subject.add_observer(StreamlitNotifier())
+
 def validate_login(username, password):
     if not username or not password:
         st.error("⚠ Please fill all fields.")
@@ -23,15 +32,21 @@ def validate_login(username, password):
 
     user_data = db.validar_login(username, password)
     if user_data:
-        # Salva o contexto do usuário logado
         st.session_state["user_id"] = user_data["user_id"]
         st.session_state["username"] = user_data["username"]
 
         st.success(f"✅ Welcome, {user_data['username']}!")
+    
+        # 🔔 Notifica os observadores
+        login_subject.notify_observers(f"User '{username}' logged in successfully!", success=True)
+
         st.session_state.page = "begin"
         st.rerun()
     else:
         st.error("❌ Invalid username or password.")
+        # 🔔 Notifica os observadores do erro
+        login_subject.notify_observers(f"Failed login attempt for username: {username}", success=False)
+
 
 
 def validate_signup(username, email, password, confirm):
