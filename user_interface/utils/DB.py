@@ -63,7 +63,7 @@ class UserRepository:
 
             if not row:
                 return None  # login inválido
-            else:
+            else: 
              # Retorna as informações do usuário logado
                  return {"user_id": row[0], "username": row[1]}
         except Exception as e:
